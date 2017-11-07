@@ -22,18 +22,19 @@ class KLL(object):
         if not self.samplingMode:
             self.s -= 2*ceil(log(self.n,2))
         self.k = int(self.s*(1-c))  # always
-        self.c = c             # always
-        self.compactors = []   # always
-        self.H = 0             # always
+        self.c = c                  # always
+        self.compactors = []        # always
+        self.H = 0                  # always
 
         self.size = 0               # if greedy
         self.maxSize = 0            # if greedy
         self.ranBit = []
         self.ranState = []
-        self.grow()  # always
+        self.grow()                 # always
 
         self.D = 0                  # if sampling
         self.sampler = Sampler()    # if sampling
+        self.cumVar = 0             # cumulative variance introduced
 
     def grow(self):
 
@@ -90,6 +91,8 @@ class KLL(object):
                     self.ranState[h] = not self.ranState[h]
                     self.ranBit[h] = self.ranState[h]* (not self.ranBit[h]) + (not self.ranState[h]) * (random() < 0.5)
                 self.size = sum(len(c) for c in self.compactors)
+                # if self.varOptMode:
+                self.cumVar += (2**(h + self.D))**2 / 2
                 if self.lazyMode:
                     break
 
@@ -140,6 +143,7 @@ class CormodeRandom:
         self.alBucket_i = 0 # index to nonFull bucket in Active Layer
         self.al = 0   #active layer value
         self.sampler = Sampler()
+        self.cumVar = 0             # dummy variable just to keep interfaces the same 
 
 
     def update(self,item):
@@ -210,6 +214,7 @@ class MRL:
         self.tlBuckets = []    # top layer buckets
         self.alBuckets.append(BucketM(self.k, 1))
         self.decisionBit = 0
+        self.cumVar = 0             # dummy variable just to keep interfaces the same
 
     def update(self,item):
         if len(self.alBuckets[-1]) < self.k:

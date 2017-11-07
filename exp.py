@@ -27,6 +27,7 @@ def doOneRun(setting):
     realRanks = Data.getQuantiles(data, nums)
     settingNew = setting[:]
     settingNew.append(str(np.max(np.abs(np.array(realRanks) - np.array(estRanks)))))
+    settingNew.append(str(np.sqrt(sketch.cumVar)))
     return ", ".join(settingNew)
 
 
