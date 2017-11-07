@@ -91,8 +91,8 @@ class KLL(object):
                     self.ranState[h] = not self.ranState[h]
                     self.ranBit[h] = self.ranState[h]* (not self.ranBit[h]) + (not self.ranState[h]) * (random() < 0.5)
                 self.size = sum(len(c) for c in self.compactors)
-                # if self.varOptMode:
-                self.cumVar += (2**(h + self.D))**2 / 2
+                if self.varOptMode:
+                    self.cumVar += (2**(h + self.D))**2 / 2
                 if self.lazyMode:
                     break
 
