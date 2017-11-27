@@ -72,17 +72,15 @@ def readSettingQueue(path):
 
 if __name__ == '__main__':
 
-    
-    
     datasets = ["./datasets/r6.npy", "./datasets/s6.npy", "./datasets/zi6.npy", "./datasets/zo6.npy"]
     algos = ['KLL', 'MRL', 'CormodeRandom']
     srange = 2**np.array(range(9,13))
-    modes = ["00000","10000","20000","21000","21100","21110","21111"]
+    modes = ["000000","100000","110000","111000","111100","111110","000001","100001","110001","111001","000002","100002","110002","111002"]
     crange = np.arange(0.1, 0.5, 0.05)
     repsNum = 50
     path = "./queue.csv"
     genQueue(datasets, algos, srange, modes, crange, repsNum, path)
-    runExpWithPool(1,10,2)
+    #runExpWithPool(1,10,2)
 
     # runAllExp()
     # runExpWithPool
