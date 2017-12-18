@@ -13,16 +13,15 @@ from multiprocessing import Pool
 from functools import partial
 
 class KLL(object):
-    def __init__(self, s=128, c=2.0 / 3.0, mode=(0,0,0,0,0,0), n=None):
+    def __init__(self, s=128, c=2.0 / 3.0, mode=(0,0,0,0,0), n=None):
         self.mode = mode
-        self.greedyMode, self.lazyMode, self.samplingMode,\
-                self.oneTossMode, self.varOptMode, self.onePairMode = mode
+        self.greedyMode, self.lazyMode, self.oneTossMode,\
+                       self.varOptMode, self.onePairMode = mode
         
         self.s = s
         self.n = n   # n is needed only for solution without sampling 
 
-        if not self.samplingMode:
-            self.s -= 2*ceil(log(self.n,2))
+        self.s -= 2*ceil(log(self.n,2))
 
         self.k = int(self.s*(1-c) + 4)   # top layer size, 4 -is a bottom layer size
         self.c = c                       # layer size decreasing rate
@@ -33,41 +32,34 @@ class KLL(object):
         self.size = 0               # current number of counters in use
         self.maxSize = 0            # max number of counters that 
                                     # can be used in current configuration 
-        self.D = 0                  # depth 
-        self.sampler = Sampler()    # sampler object
+        # self.D = 0                  # depth 
+        # self.sampler = Sampler()    # sampler object
         self.cumVar = 0             # cumulative variance introduced
         self.grow()                 # create first empty compactor
 
     def grow(self):
         self.compactors.append(Compactor(self.mode))
-        if self.samplingMode and self.H + 1 > self.maxH:
-            self.D += 1
-            self.compactors.pop(0)
-        else:
-            self.H += 1
+        self.H += 1
         self.maxSize = sum(self.capacity(height) for height in range(self.H))
 
     def capacity(self, hight):
         depth = self.H - hight - 1
-        return int(ceil(self.c ** depth * self.k))
+        return int(ceil(self.c ** depth * self.k)) + 1
 
     def update(self, item):
-        if (self.samplingMode):
-            item = self.sampler.sample(item, self.D)
-        if (not self.samplingMode) or (item is not None):
-            # if self.onePairMode:
-            bisect.insort_left(self.compactors[0],item)
-            # else:
-                # self.compactors[0].append(item)
-            self.size += 1
-            if (not self.greedyMode and (len(self.compactors[0]) >= self.capacity(0) or (self.size >= self.s))) or \
-                                    (self.greedyMode == 1 and (self.size >= self.maxSize)) or \
-                                    (self.greedyMode == 2 and (self.size >= self.s)):
-                self.compress()
-                if self.samplingMode:
-                    assert self.size < self.s, "over2"
-                else:
-                    assert self.size < self.s + 2 * ceil(log(self.n, 2)), "over1"
+        # if self.onePairMode:
+        bisect.insort_left(self.compactors[0],item)
+        # else:
+            # self.compactors[0].append(item)
+        self.size += 1
+        if (not self.greedyMode and (len(self.compactors[0]) >= self.capacity(0) or (self.size >= self.s))) or \
+                                (self.greedyMode == 1 and (self.size >= self.maxSize)) or \
+                                (self.greedyMode == 2 and (self.size >= self.s)):
+            self.compress()
+            if self.samplingMode:
+                assert self.size < self.s, "over2"
+            else:
+                assert self.size < self.s + 2 * ceil(log(self.n, 2)), "over1"
 
 
     def compress(self):

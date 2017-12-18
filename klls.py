@@ -206,6 +206,44 @@ def test(modes, reps, space, stream, nProcesses):
         #         maxError = max(maxError, abs(i - j))
         #     errors.append(maxError)
 
+def runOneC(mode, space, reps, stream, c):
+    errors = []
+    for i in range(reps):
+        q = KLL(space, c = c, mode=mode, n=len(stream))
+        for  item in stream:
+            q.update(item)
+        maxError = 0
+        for i,j in q.ranks():
+            maxError = max(maxError, abs(i - j))
+        errors.append(maxError)
+    return [mode, c, np.mean(errors), np.std(errors)]
+
+
+
+def testC(Cs, mode, reps, space, stream, nProcesses):
+    pool = Pool(processes=nProcesses)
+    runOneCPartial = partial(runOneC,mode=mode, space=space, reps=reps, stream=stream)
+    results = pool.map(runOneC, Cs)
+    pool.close()
+    pool.join()
+
+    for res in results:
+        print(res[0], res[1], res[2], res[3])
+    # for mode in modes:
+    #     [mode, errorMean, errorStd] = runOneMode(mode, space, reps, stream)
+    #     print(str(mode) + "\t" + str(errorMean) + "\t" + str(errorStd))
+        # print(myMode)
+        # errors = []
+        # for i in xrange(20):
+        #     q = KLL(96,mode=myMode, n =10**5)
+        #     for item_i,item in enumerate(a):
+        #         q.update(item)
+        #     maxError = 0
+        #     for i,j in q.ranks():
+        #         maxError = max(maxError, abs(i - j))
+        #     errors.append(maxError)
+
+
 def genModeQueue(fname,greedy, lazy, onetoss, varopt, onepair):
     fd = open(fname,'w')
     for i4 in range(onepair*3 + 1):
@@ -232,5 +270,7 @@ if __name__ == "__main__":
     for mode in open('modes.q'):
         modes.append([int(i) for i in list(mode.rstrip())])
     # print(modes)
-    test(modes, reps, space, stream, nProcesses)
-    
+    # test(modes, reps, space, stream, nProcesses)
+    Cs = list((np.array(range(99)) + 1)/100.)
+    # print(Cs)
+    testC(Cs, mode, reps, space, stream, nProcesses)
