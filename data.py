@@ -70,18 +70,21 @@ class Data:
     def gen2file(path, n, order):
         data = np.zeros(n)
         for item_i, item in enumerate(Data.onTheFly(n, order)):
+            if item_i >= n:
+                break;
             data[item_i] = item
         np.save(path, data)
 
 if __name__ == '__main__':
-    for i in range(6,8):
-        print i
-        # Data.gen2file("./datasets/", 10**i, "sqrt")
+    for i in range(5,9):
+        print (i)
+        Data.gen2file("./datasets/sq" + str(i), 10**i, "sqrt")
+        print (i)
         Data.gen2file("./datasets/zi" + str(i), 10**i, "zoomin")
-        print i
+        print (i)
         Data.gen2file("./datasets/zo" + str(i), 10**i, "zoomout")
-        print i
+        print (i)
         Data.gen2file("./datasets/s" + str(i), 10**i, "sorted")
-        print i
+        print (i)
         Data.gen2file("./datasets/r" + str(i), 10**i, "random")
 

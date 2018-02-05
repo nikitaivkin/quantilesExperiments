@@ -71,9 +71,6 @@ class KLL(object):
                         h-=1
                 assert h >= 0, "under1"
                 if self.onePairMode:
-#                    self.compactors[h + 1] = list(merge(self.compactors[h+1], self.compactors[h].compactPair()))
-#                    self.compactors[h + 1].extend(self.compactors[h].compactPair())
-#                    self.compactors[h + 1].extend(self.compactors[h].compactPair())
                     bisect.insort_left(self.compactors[h+1],self.compactors[h].compactPair()[0])
                 else:
                     self.compactors[h + 1].extend(self.compactors[h].compactLayer())
@@ -145,26 +142,34 @@ class Compactor(list):
         elif self.onePairMode == 1:
             randChoice = randint(0,len(self) - 2)
             pair = [self.pop(randChoice), self.pop(randChoice)]
-            # pair = [self.pop(randint(0,len(self) - 2)), self.pop(randint(0,len(self) - 2))]
+            self.randBit = random() < 0.5
         elif self.onePairMode == 2:
             pair_i = min(self.prevCompInd, len(self) - 2)
             pair = [self.pop(pair_i), self.pop(pair_i)]
             if self.prevCompInd + 1 <= len(self) - 2:
-            # if self.prevCompRand + 1 >= len(self) - 2:
                 self.prevCompInd += 1
             else:
                 self.prevCompInd = 0
+            self.randBit = random() < 0.5
         elif self.onePairMode == 3:
             pair_i = bisect.bisect_left(self, self.prevCompInd)
             if pair_i > len(self) - 2:
                 pair_i = 0
             pair = [self.pop(pair_i), self.pop(pair_i)]
             self.prevCompInd = pair[1]
-
-
-
+            self.randBit = random() < 0.5
+        elif self.onePairMode == 4:
+            pair_i = bisect.bisect_left(self, self.prevCompInd)
+            if pair_i > len(self) - 2:
+                pair_i = 0
+                if self.oneTossMode and self.prevCompRand:
+                    self.randBit =  not self.randBit
+                else:
+                    self.randBit = random() < 0.5
+                self.prevCompRand = not self.prevCompRand                
+            pair = [self.pop(pair_i), self.pop(pair_i)]
+            self.prevCompInd = pair[1]
         _out = [pair[self.randBit]]
-        self.randBit = random() < 0.5
         return _out
 
 class Sampler():

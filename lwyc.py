@@ -11,7 +11,7 @@ import bisect
 from heapq import merge
 
 
-class CormodeRandom:
+class LWYC:
     def __init__(self, s = None,c = None, mode= None,n= None):
         eps = self.space2eps(s)
         # print(str(eps) +  " " + str(s))
@@ -27,14 +27,14 @@ class CormodeRandom:
     def update(self,item):
         item = self.sampler.sample(item, self.al)
         if item is not None:
-            self.alBuckets[self.alBucket_i].append(item)
-            if len(self.alBuckets[self.alBucket_i]) == int(self.s):
+            self.alBuckets[int(self.alBucket_i)].append(item)
+            if len(self.alBuckets[int(self.alBucket_i)]) == int(self.s):
                 self.alBucket_i += 1
                 if self.alBucket_i > len(self.alBuckets)-1:
-                    for i in range(0, self.b/2):
+                    for i in range(0, int(self.b/2)):
                         self.alBuckets[i] = BucketC(self.alBuckets[i],
-                                                    self.alBuckets[i+ self.b/2])
-                    for b in self.alBuckets[self.b/2:]:
+                                                    self.alBuckets[i+ int(self.b/2)])
+                    for b in self.alBuckets[int(self.b/2):]:
                         del b[:]
                     self.alBucket_i = self.b/2
                     self.al += 1
@@ -82,35 +82,35 @@ class Sampler():
         self.s2 -= 1
         return item if (self.s1 == -1) else None
 
-def test():
-    # # q = MRL(96, 10**7)
-    # modes = [(0,0,0,0,0,0), (0,0,0,0,1,0),(0,0,0,1,0,0),(0,0,0,1,1,0),(0,0,1,0,0,0),(0,0,1,0,1,0)]
-    # modes.extend([(0,0,1,1,0,0), (0,0,1,1,1,0),(0,1,0,0,1,0),(0,1,0,1,0,0),(0,1,0,1,1,0),(0,1,1,0,0,0)])
-    # modes.extend([(0,1,1,0,1,0), (0,1,1,1,0,0),(0,1,1,1,1,0)])
-    # modes.extend([(1,0,0,0,0,0), (1,0,0,0,1,0),(1,0,0,1,0,0),(1,0,0,1,1,0),(1,0,1,0,0,0),(1,0,1,0,1,0)])
-    # modes.extend([(1,0,1,1,0,0), (1,0,1,1,1,0),(1,1,0,0,1,0),(1,1,0,1,0,0),(1,1,0,1,1,0),(1,1,1,0,0,0)])
-    # modes.extend([(1,1,1,0,1,0), (1,1,1,1,0,0),(1,1,1,1,1,0)])
-    # modes.extend([(0,0,0,0,0,1), (0,0,1,0,0,1),(0,1,1,0,0,1),(1,0,0,0,0,1), (1,0,1,0,0,1),(1,1,1,0,0,1)]) 
-    # modes.extend([(0,0,0,0,0,2), (0,0,1,0,0,2),(0,1,1,0,0,2),(1,0,0,0,0,2), (1,0,1,0,0,2),(1,1,1,0,0,2)])
+# def test():
+#     # # q = MRL(96, 10**7)
+#     # modes = [(0,0,0,0,0,0), (0,0,0,0,1,0),(0,0,0,1,0,0),(0,0,0,1,1,0),(0,0,1,0,0,0),(0,0,1,0,1,0)]
+#     # modes.extend([(0,0,1,1,0,0), (0,0,1,1,1,0),(0,1,0,0,1,0),(0,1,0,1,0,0),(0,1,0,1,1,0),(0,1,1,0,0,0)])
+#     # modes.extend([(0,1,1,0,1,0), (0,1,1,1,0,0),(0,1,1,1,1,0)])
+#     # modes.extend([(1,0,0,0,0,0), (1,0,0,0,1,0),(1,0,0,1,0,0),(1,0,0,1,1,0),(1,0,1,0,0,0),(1,0,1,0,1,0)])
+#     # modes.extend([(1,0,1,1,0,0), (1,0,1,1,1,0),(1,1,0,0,1,0),(1,1,0,1,0,0),(1,1,0,1,1,0),(1,1,1,0,0,0)])
+#     # modes.extend([(1,1,1,0,1,0), (1,1,1,1,0,0),(1,1,1,1,1,0)])
+#     # modes.extend([(0,0,0,0,0,1), (0,0,1,0,0,1),(0,1,1,0,0,1),(1,0,0,0,0,1), (1,0,1,0,0,1),(1,1,1,0,0,1)]) 
+#     # modes.extend([(0,0,0,0,0,2), (0,0,1,0,0,2),(0,1,1,0,0,2),(1,0,0,0,0,2), (1,0,1,0,0,2),(1,1,1,0,0,2)])
     
-    modes = [(0,0,0,0,0,0),(0,0,0,0,0,1),(0,0,0,0,0,2),(0,0,0,0,0,3)]
-    #modes = [(0,1,1,1,1,0),(1,1,1,1,1,0),(2,1,1,1,1,0)]
-    a = np.array(range(100000))
-    np.random.shuffle(a)
-    for myMode in modes:
-        print(myMode)
-        for i in xrange(20):
-            q = KLL(96,mode=myMode, n =10**5)
-            # # q = CormodeRandom(96, Noneu)
-            # # # q = Quant5(96, 2./3)
-            for item_i,item in enumerate(a):
-                q.update(item)
-                # if item_i%10000 == 0:
-                #     print(item_i)
-            maxError = 0
-            for i,j in q.ranks():
-                maxError = max(maxError, abs(i - j))
-            print(maxError)
+#     modes = [(0,0,0,0,0,0),(0,0,0,0,0,1),(0,0,0,0,0,2),(0,0,0,0,0,3)]
+#     #modes = [(0,1,1,1,1,0),(1,1,1,1,1,0),(2,1,1,1,1,0)]
+#     a = np.array(range(100000))
+#     np.random.shuffle(a)
+#     for myMode in modes:
+#         print(myMode)
+#         for i in xrange(20):
+#             q = KLL(96,mode=myMode, n =10**5)
+#             # # q = CormodeRandom(96, Noneu)
+#             # # # q = Quant5(96, 2./3)
+#             for item_i,item in enumerate(a):
+#                 q.update(item)
+#                 # if item_i%10000 == 0:
+#                 #     print(item_i)
+#             maxError = 0
+#             for i,j in q.ranks():
+#                 maxError = max(maxError, abs(i - j))
+# #             print(maxError)
 
-if __name__ == "__main__":
-    test()
+# if __name__ == "__main__":
+#     test()
