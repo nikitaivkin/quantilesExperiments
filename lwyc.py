@@ -16,25 +16,25 @@ class LWYC:
         eps = self.space2eps(s)
         # print(str(eps) +  " " + str(s))
         self.b = int(ceil((log(1./eps,2) + 1)/2.)*2)
-        self.s = 1./eps*sqrt(log(1./eps,2))
+        self.s = 1./eps*sqrt(log(1./eps,2))  # not the total space allowed which is s, but bucket size here
         self.alBuckets = [BucketC() for _ in range(self.b)]
-        self.alBucket_i = 0 # index to nonFull bucket in Active Layer
-        self.al = 0   #active layer value
+        self.alBucket_i = 0             #  index to nonFull bucket in Active Layer
+        self.al = 0                     #  active layer value
         self.sampler = Sampler()
-        self.cumVar = 0             # dummy variable just to keep interfaces the same 
+        self.cumVar = 0                 # dummy variable just to keep interfaces the same 
 
 
     def update(self,item):
         item = self.sampler.sample(item, self.al)
         if item is not None:
             self.alBuckets[int(self.alBucket_i)].append(item)
-            if len(self.alBuckets[int(self.alBucket_i)]) == int(self.s):
-                self.alBucket_i += 1
-                if self.alBucket_i > len(self.alBuckets)-1:
-                    for i in range(0, int(self.b/2)):
+            if len(self.alBuckets[int(self.alBucket_i)]) == int(self.s): # check if after adding and item bucket got full
+                self.alBucket_i += 1                                     # if so then moving to the next bucket
+                if self.alBucket_i > len(self.alBuckets)-1:              # if there is no next bucket 
+                    for i in range(0, int(self.b/2)):                    # merging buckets
                         self.alBuckets[i] = BucketC(self.alBuckets[i],
                                                     self.alBuckets[i+ int(self.b/2)])
-                    for b in self.alBuckets[int(self.b/2):]:
+                    for b in self.alBuckets[int(self.b/2):]:            # cleaning
                         del b[:]
                     self.alBucket_i = self.b/2
                     self.al += 1

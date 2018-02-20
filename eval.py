@@ -1,8 +1,35 @@
 from klls import *
 from lwyc import *
+from lwycLazy import *
 from data import *
 import numpy as np
 import sys
+
+def testLWYCLazy(reps, stream):
+    outputMean = []
+    outputStd = []
+    # outputAveCumStd = []
+    for space in [64, 128,256,512,1024,2048,4096,8192]:
+        errors = []
+        # cumstds = []
+        for i in range(reps):
+            q = LWYCLazy(s = space)
+            for  item in stream:
+                q.update(item)
+            maxError = 0
+            for i,j in q.ranks():
+                maxError = max(maxError, abs(i - j))
+            errors.append(maxError)
+            # cumstds.append(np.sqrt(q.cumVar))
+        # outputAveCumStd.append(np.mean(cumstds))
+        outputMean.append(np.mean(errors))
+        outputStd.append(np.std(errors))
+    mode = "lwyclazy"
+    res = [mode, outputMean, outputStd]#, outputAveCumStd]
+    print(res[0], res[1][0], res[1][1], res[1][2], res[1][3],res[1][4],res[1][5], res[1][6], res[1][7])
+    print("-", res[0], res[2][0], res[2][1], res[2][2], res[2][3],res[2][4],res[2][5], res[2][6], res[2][7])
+    # print("--", res[0], res[3][0], res[3][1], res[3][2], res[3][3],res[3][4],res[3][5])
+    return [mode, outputMean, outputStd]#, outputAveCumStd]
 
 
 
@@ -10,7 +37,7 @@ def testLWYC(reps, stream):
     outputMean = []
     outputStd = []
     # outputAveCumStd = []
-    for space in [128,256,512,1024,2048,4096]:
+    for space in [64,128,256,512,1024,2048,4096,8192]:
         errors = []
         # cumstds = []
         for i in range(reps):
@@ -27,8 +54,8 @@ def testLWYC(reps, stream):
         outputStd.append(np.std(errors))
     mode = "lwyc"
     res = [mode, outputMean, outputStd]#, outputAveCumStd]
-    print(res[0], res[1][0], res[1][1], res[1][2], res[1][3],res[1][4],res[1][5])
-    print("-", res[0], res[2][0], res[2][1], res[2][2], res[2][3],res[2][4],res[2][5])
+    print(res[0], res[1][0], res[1][1], res[1][2], res[1][3],res[1][4],res[1][5], res[1][6], res[1][7])
+    print("-", res[0], res[2][0], res[2][1], res[2][2], res[2][3],res[2][4],res[2][5], res[2][6], res[2][7])
     # print("--", res[0], res[3][0], res[3][1], res[3][2], res[3][3],res[3][4],res[3][5])
     return [mode, outputMean, outputStd]#, outputAveCumStd]
 
@@ -38,7 +65,7 @@ def runOneMode(mode, reps, stream):
     outputStd = []
     outputAveCumStd = []
     outputAveCumStdS = []
-    for space in [128,256,512,1024,2048,4096]:
+    for space in [64,128,256,512,1024,2048,4096,8192]:
         errors = []
         cumstds = []
         cumstdss = []
@@ -68,10 +95,10 @@ def testModes(modes, reps, stream, nProcesses):
     pool.close()
     pool.join()
     for res in results:
-        print(res[0], res[1][0], res[1][1], res[1][2], res[1][3],res[1][4],res[1][5])
-        print("-", res[0], res[2][0], res[2][1], res[2][2], res[2][3],res[2][4],res[2][5])
-        print("--", res[0], res[3][0], res[3][1], res[3][2], res[3][3],res[3][4],res[3][5])
-        print("---", res[0], res[4][0], res[4][1], res[4][2], res[4][3],res[4][4],res[4][5])
+        print(res[0], res[1][0], res[1][1], res[1][2], res[1][3],res[1][4],res[1][5], res[1][6], res[1][7])
+        print("-", res[0], res[2][0], res[2][1], res[2][2], res[2][3],res[2][4],res[2][5], res[2][6], res[2][7])
+        print("--", res[0], res[3][0], res[3][1], res[3][2], res[3][3],res[3][4],res[3][5], res[3][6], res[3][7])
+        print("---", res[0], res[4][0], res[4][1], res[4][2], res[4][3],res[4][4],res[4][5], res[4][6], res[4][7])
 
     # for mode in modes:
     #     [mode, outputMean, outputStd, outputAveCumStd] = runOneMode(mode, reps, stream)
@@ -170,21 +197,22 @@ def testStreamSizes(algo, reps, nProcesses, space, mode):
 
 
 if __name__ == "__main__":
-    streamFiles= ["./datasets/r5.npy","./datasets/s5.npy", "./datasets/zi5.npy", "./datasets/zo5.npy", "./datasets/sq5.npy" ]
-    stream = Data.load(streamFiles[int(sys.argv[1])])
+    #streamFiles= ["./datasets/r5.npy","./datasets/s5.npy", "./datasets/zi5.npy", "./datasets/zo5.npy", "./datasets/sq5.npy" ]
+    #stream = Data.load(streamFiles[int(sys.argv[1])])
     # print(stream[:100])
-    #stream = np.array(range(10**5))
-    #np.random.seed(seed=1234567)
-    #np.random.shuffle(stream)
-    reps = 20 
-    nProcesses = 20
+    stream = np.array(range(10**8))
+    np.random.seed(seed=1234567)
+    np.random.shuffle(stream)
+    reps = 25 
+    nProcesses = 55
     modes = []
-    genModeQueue('modes.q', [0,2],[0,1],[0,1],[0,1],[0,1,3,4])
+    #genModeQueue('modes.q', [0,2],[0,1],[0,1],[0,1],[0,1,4])
     for mode in open('modes.q'):
         modes.append([int(i) for i in list(mode.rstrip())])
-    #print (modes)
+    print (modes)
     #testModes(modes[:], reps, stream, nProcesses)
-    #testLWYC(reps, stream ) 
+    #testLWYC(reps, stream)
+    testLWYCLazy(reps, stream)
     #Cs = list((np.array(range(10,90)))/100.)
     # # print(Cs)
     space = 512

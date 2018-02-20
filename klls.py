@@ -136,12 +136,15 @@ class KLL(object):
         itemsAndWeights = []
         for (h, items) in enumerate(self.compactors):
             itemsAndWeights.extend((item, 2 ** (h+ self.D)) for item in items)
- #       print (itemsAndWeights)
+        #print (itemsAndWeights)
         itemsAndWeights.sort()
         cumWeight = 0
+        prev_item = None 
         for (item, weight) in itemsAndWeights:
             cumWeight += weight
-            ranksList.append((item, cumWeight))
+            if item !=prev_item:
+                ranksList.append((item, cumWeight))
+            prev_item = item
         return ranksList
 
 
@@ -152,7 +155,7 @@ class Compactor(list):
         self.randBit = random() < 0.5 # compact even or odd
         self.prevCompRand = 1 # flag = 1 if prev compaction was random
         self.randShift = (random() < 0.5)*self.varOptMode   # compact 0:k-1 or 1:k
-        self.prevCompInd = -1 # index of previously compacted pair, or previously compacted value
+        self.prevCompInd = None # index of previously compacted pair, or previously compacted value
 
     def compactLayer(self):
         # self.sort()
@@ -181,24 +184,24 @@ class Compactor(list):
             pair = [self.pop(randChoice), self.pop(randChoice)]
             # pair = [self.pop(randint(0,len(self) - 2)), self.pop(randint(0,len(self) - 2))]
             self.randBit = random() < 0.5
-        elif self.onePairMode == 2:
-            pair_i = min(self.prevCompInd, len(self) - 2)
-            pair = [self.pop(pair_i), self.pop(pair_i)]
-            if self.prevCompInd + 1 <= len(self) - 2:
-            # if self.prevCompRand + 1 >= len(self) - 2:
-                self.prevCompInd += 1
-            else:
-                self.prevCompInd = 0
-            self.randBit = random() < 0.5
+#        elif self.onePairMode == 2:
+#            pair_i = min(self.prevCompInd, len(self) - 2)
+#            pair = [self.pop(pair_i), self.pop(pair_i)]
+#            if self.prevCompInd + 1 <= len(self) - 2:
+#            # if self.prevCompRand + 1 >= len(self) - 2:
+#                self.prevCompInd += 1
+#            else:
+#                self.prevCompInd = 0
+#            self.randBit = random() < 0.5
         elif self.onePairMode == 3:
-            pair_i = bisect.bisect_left(self, self.prevCompInd)
+            pair_i = bisect.bisect_left(self, self.prevCompInd) if self.prevCompInd != None else 0
             if pair_i > len(self) - 2:
                 pair_i = 0
             pair = [self.pop(pair_i), self.pop(pair_i)]
             self.prevCompInd = pair[1]
             self.randBit = random() < 0.5
         elif self.onePairMode == 4:
-            pair_i = bisect.bisect_left(self, self.prevCompInd)
+            pair_i = bisect.bisect_left(self, self.prevCompInd) if self.prevCompInd != None else 0
             if pair_i > len(self) - 2:
                 pair_i = 0
                 if self.oneTossMode and self.prevCompRand:

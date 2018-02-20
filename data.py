@@ -12,7 +12,7 @@ class Data:
     @staticmethod
     def onTheFly(n, order=''):
         # random.seed(42)
-        orders = ['sorted', 'zoomin', 'zoomout', 'sqrt', 'random', 'test']
+        orders = ['gaussian','multigaussian', 'sorted', 'zoomin', 'zoomout', 'sqrt', 'random', 'test']
         assert (order in orders)
         if order == 'sorted':  # sorted order
             for item in range(n):
@@ -42,6 +42,19 @@ class Data:
         elif order == 'test':  # zoom1
             for item in range(n):
                 yield item*3
+        elif order == 'multigaussian':
+            items1 = np.array(np.abs(np.random.randn(int(n/3))*(10**8) + 10**9 + np.random.randint(5)*10**8), dtype=np.uint32)
+            items2 = np.array(np.abs(np.random.randn(int(n/3))*(10**8) + 10**9 + np.random.randint(5)*10**8), dtype=np.uint32)
+            items3 = np.array(np.abs(np.random.randn(int(n/3))*(10**8) + 10**9 + np.random.randint(5)*10**8), dtype=np.uint32)
+            items = np.concatenate((items1, items2, items3), axis=0)
+            random.shuffle(items)
+            for item in items:
+                yield item   
+        elif order == 'gaussian':
+            items = np.array(np.abs(np.random.randn(n)*(10**8) + 10**9 + np.random.randint(5)*10**8),dtype=np.uint32)
+            random.shuffle(items)
+            for item in items:
+                yield item   
         else:  # order == 'random':
             items = list(range(n))
             random.shuffle(items)
@@ -77,14 +90,16 @@ class Data:
 
 if __name__ == '__main__':
     for i in range(5,9):
-        print (i)
-        Data.gen2file("./datasets/sq" + str(i), 10**i, "sqrt")
-        print (i)
-        Data.gen2file("./datasets/zi" + str(i), 10**i, "zoomin")
-        print (i)
-        Data.gen2file("./datasets/zo" + str(i), 10**i, "zoomout")
-        print (i)
-        Data.gen2file("./datasets/s" + str(i), 10**i, "sorted")
-        print (i)
-        Data.gen2file("./datasets/r" + str(i), 10**i, "random")
+       Data.gen2file("./datasets/mg" + str(i), 10**i, "multigaussian")
+       Data.gen2file("./datasets/g" + str(i), 10**i, "gaussian")
+       # print (i)
+       # Data.gen2file("./datasets/sq" + str(i), 10**i, "sqrt")
+       # print (i)
+       # Data.gen2file("./datasets/zi" + str(i), 10**i, "zoomin")
+       # print (i)
+       # Data.gen2file("./datasets/zo" + str(i), 10**i, "zoomout")
+       # print (i)
+       # Data.gen2file("./datasets/s" + str(i), 10**i, "sorted")
+       # print (i)
+       # Data.gen2file("./datasets/r" + str(i), 10**i, "random")
 
