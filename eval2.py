@@ -5,6 +5,7 @@ from data import *
 import numpy as np
 import sys
 import socket
+import time 
 #import matplotlib.pyplot as plt
 
 CONVERSION_NEEDED = 0
@@ -143,64 +144,29 @@ def findRanks(stream, items):
         ranks[idx:] += 1
     return ranks
 
-
-#def runOneStreamSize(_ = 0, algo="KLL", mode= (0,0,0,0,0), space=512,streamSizeP=5 ): 
-#    stream = np.array(range(10**streamSizeP))
-#    np.random.seed(seed=1234567)
-#    np.random.shuffle(stream)
-#    q = LWYC(s = space) if algo=="LWYC" else KLL(space,mode=mode, n=len(stream))
-#    for  item in stream:
-#        q.update(item)
-#    maxError = 0
-#    for i,j in q.ranks():
-#        maxError = max(maxError, abs(i - j))
-#    return [maxError, 0 ,0] if algo=="LWYC" else [maxError, q.cumVar, q.cumVarS]
-#
-#
-#
-#def testStreamSizes(algo, reps, nProcesses, space, mode):
-#    outputMean = []
-#    outputStd = []
-#    outputAveCumStd = []
-#    outputAveCumStdS = []
-#    for streamSizeP in range(5,10):
-#    #    stream = np.array(range(10**streamSizeP))
-#     #   np.random.seed(seed=1234567)
-#     #   np.random.shuffle(stream)
-#        pool = Pool(processes=nProcesses)
-#        runOneStreamSizePartial = partial(runOneStreamSize,algo=algo, mode=mode, space=space, streamSizeP=streamSizeP)
-#        results = pool.map(runOneStreamSizePartial, range(reps))
-#    #    results = [] 
-#     #   for i in range(reps):
-#      #      results.append(runOneStreamSizePartial(i))
-#        pool.close()
-#        pool.join()
-#
-#        errors = []
-#        cumstds = []
-#        cumstdss = []
-#        for res in results:
-#            errors.append(res[0])
-#            cumstds.append(res[1])
-#            cumstdss.append(res[2])
-#        print (streamSizeP,np.mean(errors), np.std(errors),np.mean(cumstds),np.mean(cumstdss))
-#
-
-
-
-
-
-
 if __name__ == "__main__":
     
-    exp = "caida"
+    exp = "profiling"
     #stream = Data.load("./datasets/mg5.npy")     
     #stream = open("r5.csv")   
     #stream = "/srv/ssd/quant/caida/flow.csv"   
     #stream = "./datasets/ips.csv"  
     reps = 20 
     nProcesses = 21
-    
+   
+    if (exp=="profiling"):
+        CONVERSION_NEEDED = 0
+        ALL_UNIQUE= 1
+        READING_FROM_FILE = 0
+        stream = np.array(range(10**6))
+        np.random.seed(seed=1234567)
+        np.random.shuffle(stream)
+        t1 = time.clock()
+        runKLL( mode=[2,1,1,0,1], space=2**16, stream_=stream, c=2./3.)
+        print ((time.clock()- t1))
+
+
+
     if (exp=="testing"):
         CONVERSION_NEEDED = 0
         ALL_UNIQUE= 0

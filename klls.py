@@ -56,6 +56,7 @@ class KLL(object):
             return self.size >= self.maxSize
         if self.greedyMode == 2:
             return self.size >= self.s
+    
     def grow(self):
         self.compactors.append(Compactor(self.mode))
         if self.H + 1 > self.maxH:
@@ -77,9 +78,11 @@ class KLL(object):
                 self.compress()
             assert self.size < self.s, "overi2"
             self.addCumVarS()
+    
     def addCumVarS(self):
         if self.D > 0:
             self.cumVarS += (2**self.D)**2/2
+    
     def addCumVar(self, h):
         if not self.onePairMode:
             self.cumVar += float((2 ** (h+ self.D))**2)/ float((2**(self.oneTossMode + self.varOptMode)))
@@ -110,12 +113,7 @@ class KLL(object):
                 else:
                     self.compactors[h + 1].extend(self.compactors[h].compactLayer())
                     self.compactors[h + 1].sort()
-                self.addCumVar(h)
-
-                #     self.compactors[h + 1] = sort(kind='mergesort')
-                # if self.varOptMode:
-                #     self.cumVar += (2**(h + self.D))**2 / 2
-                # logger.info('COMPRESSED: size =   ' + str(self.size) +'\n' + self.kll2str())
+               # self.addCumVar(h)
 
                 if self.lazyMode:
                     break
