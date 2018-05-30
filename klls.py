@@ -1,140 +1,79 @@
-from __future__ import print_function
-import sys
-from random import random
-from random import randint
-from math import ceil, log, sqrt, factorial
-import numpy as np
-import time
-import cProfile
-# import logging
+from random import random, randint
+from math import floor, ceil, log, sqrt, factorial
 import bisect
-from heapq import merge
-from multiprocessing import Pool
-from functools import partial
-
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-# handler = logging.FileHandler(__name__ + '.log')
-# handler.setLevel(logging.INFO)
-# logger.addHandler(handler)
-
+import argparse, sys
 
 class KLL(object):
-    def __init__(self, s=128, c=2.0 / 3.0, mode=(0,0,0,0,0), n=None, baseLayerSize=4):
+    def __init__(self, s= 128, c= 2.0 / 3.0, mode=(0,0,0,0)):
         self.mode = mode
-        self.greedyMode, self.lazyMode, self.oneTossMode,\
-                         self.varOptMode, self.onePairMode = mode
-        self.s = s                       # max number of counters to use at any time
-
-        self.k = int(self.s*(1-c) + 4)   # k is a top layer size, 
-                                         # 4 -is a bottom layer size
+        self.lazyMode, self.oneTossMode,\
+            self.varOptMode, self.onePairMode = mode  # parsing mode options
+        self.s = s                       # max number of items stored (space limit) 
         self.c = c                       # layer size decreasing rate
-        self.compactors = []
+        self.k = int(self.s*(1-c) + 4)   # k is a top layer size, 
         self.H = 0                       # number of layers (height)
         self.maxH = log(self.k/4, 1./c)  # max number of layers (max height)
-
-        self.size = 0                    # current number of counters in use
-        self.maxSize = 0                 # max number of counters that 
-                                         # can be used in current configuration of KLL
+        self.size = 0                    # current number of items stored 
         self.D = 0                       # depth (defines the sampling rate)
-        self.sampler = Sampler()         # sampler object
-        self.cumVar = 0                  # cumulative variance introduced from compactions
-        self.cumVarS = 0                 # cumulative variance introduced from compactions and sampling
-        self.grow()                      # create first empty compactor
-        # logger.info('CREATED: with s,k,c, maxH, mode = ' + ", ".join(map(str,[self.s, self.k,self.c, self.maxH, self.mode])) )
-    def kll2str(self):
-        s = ''
-        for c in self.compactors[::-1]:
-            s += str(c) + "\n"
-        return s
-
-    def compactRule(self):
-        # logger.info('CHECKSIZE: size=' + str(self.size) +' maxSize= ' + str(self.maxSize) + '  mode=' + str(self.mode))
-        if self.greedyMode == 0:
-            return (len(self.compactors[0]) >= self.capacity(0) or self.size >= self.s)
-        if self.greedyMode == 1:
-            return self.size >= self.maxSize
-        if self.greedyMode == 2:
-            return self.size >= self.s
-    
+        self.count = 0                   # current number of updates processed  
+        
+        self.sampler = Sampler()         
+        self.compactors = []            
+        self.grow()                      # initialization -- create first empty compactor
+   
     def grow(self):
-        self.compactors.append(Compactor(self.mode))
-        if self.H + 1 > self.maxH:
-            self.D += 1
+        self.compactors.append(Compactor(self.mode)) 
+        if self.H + 1 > self.maxH:      
+            # if new compactor is too hight -> drop the bottom layer
+            self.D += 1                  
             self.compactors.pop(0)
         else:
             self.H += 1
-        self.maxSize = min(sum(self.capacity(height) for height in range(self.H)),self.s)
-
-    def capacity(self, hight):
-        depth = self.H - hight - 1
-        return int(ceil(self.c ** depth * self.k))
-
+    
+    # returns max capacity of layer with height h
+    def capacity(self, h):
+        return floor(self.c ** (self.H - h - 1) * self.k)
+  
     def update(self, item):
-        if (self.sampler.sample(item, self.D)):
-            bisect.insort_left(self.compactors[0],item)
-            self.size += 1
-            if self.compactRule():
-                self.compress()
-            assert self.size < self.s, "overi2"
-            self.addCumVarS()
+        self.count += 1
+        if (self.sampler.sample(item, self.D)) is None: #current item is not sampled
+            return 
+        bisect.insort_left(self.compactors[0],item)     #insert sampled item into the bottom compactor
+        self.size += 1
+        if (not self.lazyMode and len(self.compactors[0]) >= self.capacity(0)) or (self.size >= self.s): 
+            # compact if needed: (vanilla and current compactor is full) or (lazy and out of memory)
+            self.compress()  
     
-    def addCumVarS(self):
-        if self.D > 0:
-            self.cumVarS += (2**self.D)**2/2
-    
-    def addCumVar(self, h):
-        if not self.onePairMode:
-            self.cumVar += float((2 ** (h+ self.D))**2)/ float((2**(self.oneTossMode + self.varOptMode)))
-            self.cumVarS += float((2 ** (h+ self.D))**2)/ float((2**(self.oneTossMode + self.varOptMode)))
-        elif self.onePairMode == 1:
-            self.cumVar += float((2 ** (h+ self.D))**2)/float(len(self.compactors[h]))
-            self.cumVarS += float((2 ** (h+ self.D))**2)/float(len(self.compactors[h]))
-        elif self.onePairMode == 2:
-            # technically not true, but real value is difficult to compute
-            self.cumVar += float((2 ** (h+ self.D))**2)/float(len(self.compactors[h]))
-            self.cumVarS += float((2 ** (h+ self.D))**2)/float(len(self.compactors[h]))
-        elif self.onePairMode == 3 or self.onePairMode == 4:
-            # adding cumVar only after entire layer was sweeped
-            pair_i = bisect.bisect_left(self.compactors[h], self.compactors[h].prevCompInd)
-            if pair_i > len(self.compactors[h]) - 2:
-                self.cumVar += (2 ** (h+ self.D))**2/ float(2**(self.oneTossMode))
-                self.cumVarS += (2 ** (h+ self.D))**2/ float(2**(self.oneTossMode))
-
     def compress(self):
         for h in range(len(self.compactors)):
             if len(self.compactors[h]) >= self.capacity(h):
-                if h + 1 >= self.H:
-                    self.grow()
-                    if h + 1 >= self.H:
-                        h-=1
-                if self.onePairMode:
-                    bisect.insort_left(self.compactors[h+1],self.compactors[h].compactPair()[0])
-                else:
-                    self.compactors[h + 1].extend(self.compactors[h].compactLayer())
-                    self.compactors[h + 1].sort()
-               # self.addCumVar(h)
-
+                if h + 1 >= self.H:  # need to compact top layer
+                    self.grow()      # adding new layer above
+                    if h + 1 >= self.H: 
+                        h-=1         # this happen when H = maxH -> after growing new layer has height h-1
+                if self.onePairMode: # compacting only one pair 
+                    bisect.insort_left(self.compactors[h+1],self.compactors[h].compactPair())
+                else:                # compacting entire layer 
+                    self.compactors[h + 1][:] = sorted(self.compactors[h + 1][:] + self.compactors[h].compactLayer())
                 if self.lazyMode:
-                    break
+                    break            # if lazy -> don't make cascade compactions
         self.size = sum(len(c) for c in self.compactors)
 
-
-    def rank(self, value):
+    # returns rank of value v in the weighted set of all stored items
+    def rank(self, v):
         r = 0
         for (h, c) in enumerate(self.compactors):
             for item in c:
-                if item <= value:
-                    r += 2 ** h
+                if item <= v:
+                    r += 2 ** (h+self.D)
         return r
 
-
+    # returns ranks in the weighted set of all stored items for all unique stored items 
     def ranks(self):
         ranksList = []
         itemsAndWeights = []
         for (h, items) in enumerate(self.compactors):
             itemsAndWeights.extend((item, 2 ** (h+ self.D)) for item in items)
-        #print (itemsAndWeights)
         itemsAndWeights.sort()
         cumWeight = 0
         prev_item = None 
@@ -149,74 +88,47 @@ class KLL(object):
 class Compactor(list):
     def __init__(self, mode):
         super(Compactor, self).__init__()
-        self.oneTossMode, self.varOptMode, self.onePairMode = mode[2:]
-        self.randBit = random() < 0.5 # compact even or odd
-        self.prevCompRand = 1 # flag = 1 if prev compaction was random
-        self.randShift = (random() < 0.5)*self.varOptMode   # compact 0:k-1 or 1:k
-        self.prevCompInd = None # index of previously compacted pair, or previously compacted value
+        self.oneTossMode, self.varOptMode, self.onePairMode = mode[1:]
+        self.randBit = random() < 0.5                                   # compact even or odd
+        self.prevCompRand = 1                                           # flag = 1 if prev compaction was random
+        self.randShift = (random() < 0.5)*self.varOptMode               # compact [0:k-1] or [1:k]
+        self.theta = None                                               # previously compacted value (threshold) 
+                                                                        # for sweep compactor
 
     def compactLayer(self):
-        # self.sort()
-        _in, _out = [], []  # _in stays in compactor; _out is a result of compaction
-        _in.extend([self.pop(0)] if (self.randShift and len(self) > 2) else []) # varOptMode requires shift   
-        _in.extend([self.pop()] if len(self) % 2 else []) # checking if array to compact is even sized
-        _out.extend(self[self.randBit::2])
+        # _in stays in compactor; _out is a result of compaction
+        _in = [self.pop(0)] if (self.randShift and len(self) > 2) else [] # varOptMode requires shift   
+        _in.extend([self.pop()] if len(self) % 2 else [])                 # checking if array to compact is even sized
+        _out = self[self.randBit::2]                                      # compacting 
         self[:] = _in
-        if self.oneTossMode and self.prevCompRand:
-            self.randBit =  not self.randBit
-        else:
-            self.randBit = random() < 0.5
+        
+        self.randBit =  not self.randBit if (self.oneTossMode and self.prevCompRand) else random() < 0.5
         self.prevCompRand = not self.prevCompRand
-
-        if self.varOptMode:
-            self.randShift = random() < 0.5
+        self.randShift = (random() < 0.5)*self.varOptMode
         return _out
 
     def compactPair(self):
-        # self.sort()
-        if len(self) == 2:
-            pair = [self.pop(), self.pop()]
-            self.randBit = random() < 0.5
-        elif self.onePairMode == 1:
-            randChoice = randint(0,len(self) - 2)
-            pair = [self.pop(randChoice), self.pop(randChoice)]
-            # pair = [self.pop(randint(0,len(self) - 2)), self.pop(randint(0,len(self) - 2))]
-            self.randBit = random() < 0.5
-#        elif self.onePairMode == 2:
-#            pair_i = min(self.prevCompInd, len(self) - 2)
-#            pair = [self.pop(pair_i), self.pop(pair_i)]
-#            if self.prevCompInd + 1 <= len(self) - 2:
-#            # if self.prevCompRand + 1 >= len(self) - 2:
-#                self.prevCompInd += 1
-#            else:
-#                self.prevCompInd = 0
-#            self.randBit = random() < 0.5
-        elif self.onePairMode == 3:
-            pair_i = bisect.bisect_left(self, self.prevCompInd) if self.prevCompInd != None else 0
-            if pair_i > len(self) - 2:
-                pair_i = 0
-            pair = [self.pop(pair_i), self.pop(pair_i)]
-            self.prevCompInd = pair[1]
-            self.randBit = random() < 0.5
-        elif self.onePairMode == 4:
-            pair_i = bisect.bisect_left(self, self.prevCompInd) if self.prevCompInd != None else 0
-            if pair_i > len(self) - 2:
-                pair_i = 0
-                if self.oneTossMode and self.prevCompRand:
-                    self.randBit =  not self.randBit
-                else:
-                    self.randBit = random() < 0.5
-                self.prevCompRand = not self.prevCompRand
-            pair = [self.pop(pair_i), self.pop(pair_i)]
-            self.prevCompInd = pair[1]
+        if self.onePairMode == 1: # compacing random pair of neighbors
+            idx = randint(0,len(self) - 2) 
+        else:                     # compacting the pair of two smallest items  > theta (sweep compacting) 
+            idx = bisect.bisect_left(self, self.theta) if self.theta != None else 0
+        
+        if idx > len(self) - 2: # new sweep starts 
+            idx = 0
+            self.randBit =  not self.randBit if (self.oneTossMode and self.prevCompRand) else random() < 0.5
+            self.prevCompRand = not self.prevCompRand
+        pair = [self.pop(idx), self.pop(idx)]
+        self.theta = pair[1]
+        return pair[self.randBit]
 
-        _out = [pair[self.randBit]]
-        return _out
 
-class Sampler():
+              
+class Sampler(): 
     def __init__(self):
         self.s1 = self.s2 = -1
-
+    # out of 2^l consecutive calls
+    # return item only once by a random choice which one
+    # otherwise return None 
     def sample(self, item, l):
         if l == 0: return item
         if (self.s2 == -1):
@@ -225,4 +137,34 @@ class Sampler():
         self.s1 -= 1
         self.s2 -= 1
         return item if (self.s1 == -1) else None
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', type=int, default=256, 
+                        help=''' controls the space usage of the data structure''')
+    parser.add_argument('-c', type=float, default=2./3., 
+                        help=''' controls the space usage of the data structure''')
+    parser.add_argument('-t', type=str, choices=["string","int","float"], default='string',
+                        help='defines the type of stream items, default="string".' )
+    parser.add_argument('-m', type=str , default='0000',
+                        help='mode of the algorithm, lazy (0/1), reducedRandomness(0/1),' +\
+                        'spreadVariance(0/1), one-pair/compaction(0- off/1 - random pair/2 - sweeping), default="0000".' )
+    args = parser.parse_args()
+    s = args.s ; c = args.c; m =  [int(i) for i in args.m[:]] 
+    conversions = {'int':int,'string':str,'float':float}
+    
+    #basic check if input mode and c are valid 
+    sumCheck = sum(v - bool(v) for v in m)
+    if sumCheck > 0 and not (sumCheck == 1)*(m[-1] == 2) :
+        print("incorrect mode"); quit()
+    if c >= 1 or c <= 0: 
+        print("incorrect c"); quit()
+    kll = KLL(s=s, mode=m, c=c ) 
+    for line in sys.stdin:
+        item = conversions[args.t](line.strip('\n\r'))
+        kll.update(item)
+
+    for (item, rank) in kll.ranks():
+        print('%f\t%s'%(float(rank)/kll.count,str(item)))
 

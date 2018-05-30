@@ -1,70 +1,103 @@
-from __future__ import print_function
-import sys
-from random import random
-from random import randint
-from math import ceil, log, sqrt, factorial
-import numpy as np
-import time
-import cProfile
-import logging
+from random import random, randint
+from math import ceil, floor, log, sqrt, factorial
 import bisect
-from heapq import merge
-
+import numpy as np
+import argparse, sys
 
 class LWYC:
-    def __init__(self, s = None,c = None, mode= None,n= None):
-        eps = self.space2eps(s)
-        # print(str(eps) +  " " + str(s))
-        self.b = int(ceil((log(1./eps,2) + 1)/2.)*2)
-        self.s = 1./eps*sqrt(log(1./eps,2))  # not the total space allowed which is s, but bucket size here
-        self.alBuckets = [BucketC() for _ in range(self.b)]
-        self.alBucket_i = 0             #  index to nonFull bucket in Active Layer
-        self.al = 0                     #  active layer value
-        self.sampler = Sampler()
-        self.cumVar = 0                 # dummy variable just to keep interfaces the same 
-
+    def __init__(self, s, **kvargs):
+        eps = self.space2eps(s)                                      # find eps based on space constraints
+        self.b = ceil((log(1./eps,2) + 1))                           # number of buckets
+        self.s = ceil(1./eps*sqrt(log(1./eps,2)))                    # bucket size 
+        self.buckets = [Bucket() for _ in range(self.b)]             # initializing the buckets 
+                                                                     # (maintained in non-increasing order of layer)
+        self.bucketsLayers = np.array([0]*self.b)                    # initializing layer assigned to each buckets
+        self.bucket_i = 0                                            # index to nonFull bucket where we can add
+        self.al = 0                                                  # active layer value (defines sampling rate)
+        self.sampler = Sampler()                               
+        self.cumVar = 0                                              # variance caused by compactions                           
+        self.count = 0                                               # current length of the stream
 
     def update(self,item):
-        item = self.sampler.sample(item, self.al)
-        if item is not None:
-            self.alBuckets[int(self.alBucket_i)].append(item)
-            if len(self.alBuckets[int(self.alBucket_i)]) == int(self.s): # check if after adding and item bucket got full
-                self.alBucket_i += 1                                     # if so then moving to the next bucket
-                if self.alBucket_i > len(self.alBuckets)-1:              # if there is no next bucket 
-                    for i in range(0, int(self.b/2)):                    # merging buckets
-                        self.alBuckets[i] = BucketC(self.alBuckets[i],
-                                                    self.alBuckets[i+ int(self.b/2)])
-                    for b in self.alBuckets[int(self.b/2):]:            # cleaning
-                        del b[:]
-                    self.alBucket_i = self.b/2
-                    self.al += 1
+        self.count += 1 
+        item = self.sampler.sample(item, self.al)                    # sample an item (returns None if not sampled)
+        if item is None:
+            return 
+        
+        self.buckets[int(self.bucket_i)].append(item)                # adding to the current bucket
+        if len(self.buckets[int(self.bucket_i)]) < int(self.s):      # if current bucket is not full
+            return  
+        
+        self.bucket_i += 1                                           # move to the next bucket 
+        if self.bucket_i <= len(self.buckets)-1:                     # if there is another bucket available
+            return                                                       
+       
+        # finding the lowest layer with two buckets for merging
+ 
+        t1 = np.int32(self.bucketsLayers[:-1] - self.bucketsLayers[1:] == 0)  # =1 - buckets that followed by same layer bucket;=0 - others 
+        t2 = np.copy(t1[:]); t2[1:] += t2[:-1]; t2 = t2*t1           # =1 - the most left in the level bucket that followed by same layer bucket  
+        idx = np.nonzero(t2 == 1)[-1][-1]                            # idx to first bucket in the pair to merge 
 
+                 
+        self.buckets[idx] = Bucket(b1=self.buckets[idx],             # merge found pair (idx,idx+1) into the bucket idx  
+                                   b2=self.buckets[idx + 1])        
+         
+           
+
+        self.buckets[idx + 1:-1] = self.buckets[idx + 2:]            # shift all the buckets so the last one is empty now
+        self.bucketsLayers[idx + 1:-1] = self.bucketsLayers[idx + 2:]            # shift all the buckets so the last one is empty now
+        del self.buckets[-1][:]                                      # last bucket is non-full now
+        self.bucket_i -= 1                                           # return index to non-full bucket 
+        self.bucketsLayers[idx] += 1                                 # merged one -> layer up
+        
+        self.al = min(max(0, ceil(log(self.count/(self.s*2**(self.b - 2)),2))), self.bucketsLayers[-2]) # update active layer if needed
+        self.bucketsLayers[-1] = self.al 
+    
+    # returns rank of value in the weighted set of all stored items
+    def rank(self, value):
+        r = 0
+        for (i, c) in enumerate(self.buckets):
+            for item in c:
+                if item < value:
+                    r += 2 ** self.bucketsLayers[i]
+        return r
+
+    # returns ranks in the weighted set of all stored items for all unique stored items 
     def ranks(self):
-        allItems = []
-        for b in self.alBuckets:
-            allItems.extend(b)
-        allItems.sort()
-        ranks = np.array(range(len(allItems)))*(2**self.al)
-        return zip(allItems, ranks)
-
+        ranksList = []
+        itemsAndWeights = []
+        for (i, items) in enumerate(self.buckets):
+            itemsAndWeights.extend((item, 2 **  (self.bucketsLayers[i])) for item in items)
+        itemsAndWeights.sort()
+        cumWeight = 0
+        prev_item = None
+        for (item, weight) in itemsAndWeights:
+            cumWeight += weight
+            if item!= prev_item:
+                ranksList.append((item, cumWeight))
+            prev_item = item
+        return ranksList
+    
+    # computes space needed for given eps
     def eps2space(self,eps):
         return sqrt(log(1.0 / eps, 2)) * (log(1.0 / eps, 2) + 1) / eps
 
-    def space2eps(self,space):
-        left = 0.000001
-        right = 0.999999
-        while self.eps2space(left) >= self.eps2space(right) + 1:
-            midpoint = (left + right) / 2
-            if space > self.eps2space(midpoint):
-                right = midpoint
-            else:
-                left = midpoint
-        return left
+    # performs binary search to find \eps according to given space 
+    def space2eps(self,s):
+        e2s = self.eps2space   
+        l = 10**-10; r = 1 - l
+        while e2s(l) >= e2s(r)+1:
+            m = (l+r)/2
+            if s > e2s(m): r= m
+            else: l= m
+        return l
 
 
-class BucketC(list):
+class Bucket(list):
+    #inits an empty bucket if b1=b2=None
+    #inits a bucket, by merging buckets b1 and b2   
     def __init__(self, b1=None, b2=None):
-        super(BucketC, self).__init__()
+        super(Bucket, self).__init__()
         if b1 is not None:
             self.extend(sorted(b1 + b2)[random() < 0.5::2])
 
@@ -73,7 +106,10 @@ class Sampler():
     def __init__(self):
         self.s1 = self.s2 = -1
 
-    def sample(self, item, l):
+    # out of 2^l consecutive calls
+    # return item only once by a random choice which one
+    # otherwise return None 
+    def sample(self, item, l): 
         if l == 0: return item
         if (self.s2 == -1):
             self.s1 = randint(0, 2 ** l - 1)
@@ -82,35 +118,20 @@ class Sampler():
         self.s2 -= 1
         return item if (self.s1 == -1) else None
 
-# def test():
-#     # # q = MRL(96, 10**7)
-#     # modes = [(0,0,0,0,0,0), (0,0,0,0,1,0),(0,0,0,1,0,0),(0,0,0,1,1,0),(0,0,1,0,0,0),(0,0,1,0,1,0)]
-#     # modes.extend([(0,0,1,1,0,0), (0,0,1,1,1,0),(0,1,0,0,1,0),(0,1,0,1,0,0),(0,1,0,1,1,0),(0,1,1,0,0,0)])
-#     # modes.extend([(0,1,1,0,1,0), (0,1,1,1,0,0),(0,1,1,1,1,0)])
-#     # modes.extend([(1,0,0,0,0,0), (1,0,0,0,1,0),(1,0,0,1,0,0),(1,0,0,1,1,0),(1,0,1,0,0,0),(1,0,1,0,1,0)])
-#     # modes.extend([(1,0,1,1,0,0), (1,0,1,1,1,0),(1,1,0,0,1,0),(1,1,0,1,0,0),(1,1,0,1,1,0),(1,1,1,0,0,0)])
-#     # modes.extend([(1,1,1,0,1,0), (1,1,1,1,0,0),(1,1,1,1,1,0)])
-#     # modes.extend([(0,0,0,0,0,1), (0,0,1,0,0,1),(0,1,1,0,0,1),(1,0,0,0,0,1), (1,0,1,0,0,1),(1,1,1,0,0,1)]) 
-#     # modes.extend([(0,0,0,0,0,2), (0,0,1,0,0,2),(0,1,1,0,0,2),(1,0,0,0,0,2), (1,0,1,0,0,2),(1,1,1,0,0,2)])
-    
-#     modes = [(0,0,0,0,0,0),(0,0,0,0,0,1),(0,0,0,0,0,2),(0,0,0,0,0,3)]
-#     #modes = [(0,1,1,1,1,0),(1,1,1,1,1,0),(2,1,1,1,1,0)]
-#     a = np.array(range(100000))
-#     np.random.shuffle(a)
-#     for myMode in modes:
-#         print(myMode)
-#         for i in xrange(20):
-#             q = KLL(96,mode=myMode, n =10**5)
-#             # # q = CormodeRandom(96, Noneu)
-#             # # # q = Quant5(96, 2./3)
-#             for item_i,item in enumerate(a):
-#                 q.update(item)
-#                 # if item_i%10000 == 0:
-#                 #     print(item_i)
-#             maxError = 0
-#             for i,j in q.ranks():
-#                 maxError = max(maxError, abs(i - j))
-# #             print(maxError)
 
-# if __name__ == "__main__":
-#     test()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', type=int, default=256, 
+                              help=''' controls the space usage of the data structure''')
+    parser.add_argument('-t', type=str, choices=["string","int","float"], default='string',
+                              help='defines the type of stream items, default="string".' )
+    args = parser.parse_args()
+    s = args.s if args.s > 0 else 256
+    conversions = {'int':int,'string':str,'float':float}
+    lwyc = LWYC(s) 
+    for line in sys.stdin:
+        item = conversions[args.t](line.strip('\n\r'))
+        lwyc.update(item)
+    
+    for (item, rank) in lwyc.ranks():
+        print('%f\t%s'%(float(rank)/lwyc.count,str(item)))
