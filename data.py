@@ -2,6 +2,7 @@ import numpy as np
 import random
 import logging
 from math import sqrt
+import argparse, sys
 
 class Data:
     @staticmethod
@@ -11,95 +12,47 @@ class Data:
 
     @staticmethod
     def onTheFly(n, order=''):
-        # random.seed(42)
-        orders = ['gaussian','multigaussian', 'sorted', 'zoomin', 'zoomout', 'sqrt', 'random', 'test']
+        orders = ['sorted', 'random']
         assert (order in orders)
-        if order == 'sorted':  # sorted order
+        if order == 'sorted': 
             for item in range(n):
                 yield item
-        elif order == 'zoomin':  # zoom1
-            for item in range(int(n / 2)):
-                yield item
-                yield n - item
-        elif order == 'zoomout':  # zoom1
-            for item in range(1, int(n / 2)):
-                yield n / 2 + item
-                yield n / 2 - item
-        elif order == 'sqrt':  # zoom1
-            t = int(sqrt(2 * n))
-            item = 0
-            initialItem = 0
-            initialSkip = 1
-            for i in range(t):
-                item = initialItem
-                skip = initialSkip
-                for j in range(t - i):
-                    yield item
-                    item += skip
-                    skip += 1
-                initialSkip += 1
-                initialItem += initialSkip
-        elif order == 'test':  # zoom1
-            for item in range(n):
-                yield item*3
-        elif order == 'multigaussian':
-            items1 = np.array(np.abs(np.random.randn(int(n/3))*(10**8) + 10**9 + np.random.randint(5)*10**8), dtype=np.uint32)
-            items2 = np.array(np.abs(np.random.randn(int(n/3))*(10**8) + 10**9 + np.random.randint(5)*10**8), dtype=np.uint32)
-            items3 = np.array(np.abs(np.random.randn(int(n/3))*(10**8) + 10**9 + np.random.randint(5)*10**8), dtype=np.uint32)
-            items = np.concatenate((items1, items2, items3), axis=0)
-            random.shuffle(items)
-            for item in items:
-                yield item   
-        elif order == 'gaussian':
-            items = np.array(np.abs(np.random.randn(n)*(10**8) + 10**9 + np.random.randint(5)*10**8),dtype=np.uint32)
-            random.shuffle(items)
-            for item in items:
-                yield item   
-        else:  # order == 'random':
+        if order == 'random':  
             items = list(range(n))
             random.shuffle(items)
             for item in items:
                 yield item
 
-    #     print quants[i]
-
     @staticmethod
     def getQuantiles(data, nums):
         return np.searchsorted(np.sort(data), nums)
 
-
-
-
-
-
-    # Data.gen2file("./datasets/tiny/", 1000000, "random")
-
-    # data = Data.load("./s_test.npy")
-    # for i in range(10):
-    #     print data[i]
-    # quants = Data.getQuantiles("./s_test.npy", [123,321])
-    # for i in range(2):
     @staticmethod
-    def gen2file(path, n, order):
+    def gen2file(path, n, order, binary):
         data = np.zeros(n)
         for item_i, item in enumerate(Data.onTheFly(n, order)):
             if item_i >= n:
                 break;
             data[item_i] = item
-        np.save(path, data)
+        if binary == "binary": 
+            np.save(path, data)
+        else:
+            np.savetxt(path, data, fmt="%u")
 
 if __name__ == '__main__':
-    for i in range(5,9):
-       Data.gen2file("./datasets/mg" + str(i), 10**i, "multigaussian")
-       Data.gen2file("./datasets/g" + str(i), 10**i, "gaussian")
-       # print (i)
-       # Data.gen2file("./datasets/sq" + str(i), 10**i, "sqrt")
-       # print (i)
-       # Data.gen2file("./datasets/zi" + str(i), 10**i, "zoomin")
-       # print (i)
-       # Data.gen2file("./datasets/zo" + str(i), 10**i, "zoomout")
-       # print (i)
-       # Data.gen2file("./datasets/s" + str(i), 10**i, "sorted")
-       # print (i)
-       # Data.gen2file("./datasets/r" + str(i), 10**i, "random")
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', type=int, default=6, 
+                        help='''length of the stream (set x to get 10^x)''')
+    parser.add_argument('-o', type=str, default="random", 
+                         help='''stream order: random/sorted''')
+    parser.add_argument('-f', type=str, default="length_order", 
+                         help='''path to the output file''')
+    parser.add_argument('-b', type=str, default="text", 
+                         help='''output file binary/text''')
+    args = parser.parse_args()
+    length = args.l ; order = args.o; filename = args.f; binary = args.b;
+    if filename == "length_order":
+        filename = str(length) + "_" + order    
+    Data.gen2file(filename, 10**length, order, binary)
+    
+   
