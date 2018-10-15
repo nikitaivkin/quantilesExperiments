@@ -24,10 +24,6 @@ class Data:
                 yield item
 
     @staticmethod
-    def getQuantiles(data, nums):
-        return np.searchsorted(np.sort(data), nums)
-
-    @staticmethod
     def gen2file(path, n, order, binary):
         data = np.zeros(n)
         for item_i, item in enumerate(Data.onTheFly(n, order)):
@@ -48,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', type=str, default="length_order", 
                          help='''path to the output file''')
     parser.add_argument('-b', type=str, default="text", 
-                         help='''output file binary/text''')
+                         help='''output file binary/text''') 
     args = parser.parse_args()
     length = args.l ; order = args.o; filename = args.f; binary = args.b;
     if filename == "length_order":

@@ -6,51 +6,47 @@ import argparse, sys
 
 class LWYC:
     def __init__(self, s, **kvargs):
-        eps = self.space2eps(s)                                      # find eps based on space constraints
-        self.b = ceil((log(1./eps,2) + 1))                           # number of buckets
-        self.s = ceil(1./eps*sqrt(log(1./eps,2)))                    # bucket size 
-        self.buckets = [Bucket() for _ in range(self.b)]             # initializing the buckets 
-                                                                     # (maintained in non-increasing order of layer)
-        self.bucketsLayers = np.array([0]*self.b)                    # initializing layer assigned to each buckets
-        self.bucket_i = 0                                            # index to nonFull bucket where we can add
-        self.al = 0                                                  # active layer value (defines sampling rate)
-        self.sampler = Sampler()                               
-        self.cumVar = 0                                              # variance caused by compactions                           
-        self.count = 0                                               # current length of the stream
-
+        eps = self.space2eps(s)                     # find eps based on space constraints
+        self.b = int((log(1./eps,2)) + 1)           # number of buckets
+        self.s = int(1./eps*sqrt(log(1./eps,2)))    # bucket size 
+        self.buckets = [Bucket() for _ in range(self.b)]  # init buckets array (maintained in non-increasing order of layer)
+        self.bucketsLayers = np.array([0]*self.b)   # init buckets layers array
+        self.bucket_i = 0                           # index to nonFull bucket where we can add
+        self.al = 0                                 # active layer value (defines sampling rate)
+        self.sampler = Sampler()                    
+        self.count = 0                              # current length of the stream
+    
     def update(self,item):
         self.count += 1 
-        item = self.sampler.sample(item, self.al)                    # sample an item (returns None if not sampled)
+        item = self.sampler.sample(item, self.al)       # sample an item (returns None if not sampled)
         if item is None:
             return 
         
-        self.buckets[int(self.bucket_i)].append(item)                # adding to the current bucket
-        if len(self.buckets[int(self.bucket_i)]) < int(self.s):      # if current bucket is not full
+        self.buckets[self.bucket_i].append(item)        # adding to the current bucket
+        if len(self.buckets[self.bucket_i]) < self.s:   # if current bucket is not full
             return  
         
-        self.bucket_i += 1                                           # move to the next bucket 
-        if self.bucket_i <= len(self.buckets)-1:                     # if there is another bucket available
+        self.bucket_i += 1                              # move to the next bucket 
+        if self.bucket_i < self.b:                      # if there is another bucket available
             return                                                       
-       
-        # finding the lowest layer with two buckets for merging
- 
-        t1 = np.int32(self.bucketsLayers[:-1] - self.bucketsLayers[1:] == 0)  # =1 - buckets that followed by same layer bucket;=0 - others 
-        t2 = np.copy(t1[:]); t2[1:] += t2[:-1]; t2 = t2*t1           # =1 - the most left in the level bucket that followed by same layer bucket  
-        idx = np.nonzero(t2 == 1)[-1][-1]                            # idx to first bucket in the pair to merge 
-
-                 
+        
+        # finding the lowest layer with two buckets for merging (the most left pair in the array, but with the lowest layer)
+        t1 = self.bucketsLayers; t2 = t1.tolist()
+        idx = t2.index(t1[np.nonzero(t1[:-1] - t1[1:] == 0)[-1][-1]])
+                         
         self.buckets[idx] = Bucket(b1=self.buckets[idx],             # merge found pair (idx,idx+1) into the bucket idx  
                                    b2=self.buckets[idx + 1])        
          
            
 
         self.buckets[idx + 1:-1] = self.buckets[idx + 2:]            # shift all the buckets so the last one is empty now
-        self.bucketsLayers[idx + 1:-1] = self.bucketsLayers[idx + 2:]            # shift all the buckets so the last one is empty now
+        self.bucketsLayers[idx + 1:-1] = self.bucketsLayers[idx + 2:]            
         del self.buckets[-1][:]                                      # last bucket is non-full now
         self.bucket_i -= 1                                           # return index to non-full bucket 
         self.bucketsLayers[idx] += 1                                 # merged one -> layer up
-        
-        self.al = min(max(0, ceil(log(self.count/(self.s*2**(self.b - 2)),2))), self.bucketsLayers[-2]) # update active layer if needed
+       
+
+        self.al = min(max(0, ceil(log(float(self.count)/(self.s*2**(self.b - 2)),2))), self.bucketsLayers[-2]) # update active layer if needed
         self.bucketsLayers[-1] = self.al 
     
     # returns rank of value in the weighted set of all stored items
@@ -62,10 +58,11 @@ class LWYC:
                     r += 2 ** self.bucketsLayers[i]
         return r
 
-    # returns ranks in the weighted set of all stored items for all unique stored items 
+    # returns ranks in the weigjted set of all stored items for all unique stored items 
     def ranks(self):
         ranksList = []
         itemsAndWeights = []
+        
         for (i, items) in enumerate(self.buckets):
             itemsAndWeights.extend((item, 2 **  (self.bucketsLayers[i])) for item in items)
         itemsAndWeights.sort()
@@ -77,7 +74,16 @@ class LWYC:
                 ranksList.append((item, cumWeight))
             prev_item = item
         return ranksList
-    
+  
+    def evalMaxError(self, data):
+        estRanks = np.array(self.ranks())
+        trueRanks = np.zeros(len(estRanks))
+        for i in np.searchsorted(estRanks[:,0], data):
+            trueRanks[i-1] += 1 
+        trueRanks = np.cumsum(trueRanks) 
+        maxError = max([abs(i-j) for i,j in zip(estRanks[:,1], trueRanks)])
+        return maxError    
+ 
     # computes space needed for given eps
     def eps2space(self,eps):
         return sqrt(log(1.0 / eps, 2)) * (log(1.0 / eps, 2) + 1) / eps
