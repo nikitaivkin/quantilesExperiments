@@ -2,6 +2,7 @@ from random import random, randint
 from math import floor, ceil, log, sqrt, factorial
 import bisect
 import argparse, sys
+import numpy as np
 
 class KLL(object):
     def __init__(self, s= 128, c= 2.0 / 3.0, mode=(0,0,0,0)):
@@ -85,6 +86,16 @@ class KLL(object):
                 ranksList.append((item, cumWeight))
             prev_item = item
         return ranksList
+    
+    def evalMaxError(self, data):
+        estRanks = np.array(self.ranks())
+        trueRanks = np.zeros(len(estRanks))
+        for i in np.searchsorted(estRanks[:,0], data):
+            trueRanks[i-1] += 1 
+        trueRanks = np.cumsum(trueRanks) 
+        maxError = max([abs(i-j) for i,j in zip(estRanks[:,1], trueRanks)])
+        return maxError    
+ 
 
 
 class Compactor(list):
