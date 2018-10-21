@@ -1,10 +1,9 @@
-import kll
-import lwyc
+import kll, lwyc
 from data import *
+import numpy as np
 from functools import partial
 from multiprocessing import Pool
-import numpy as np
-import sys
+import argparse, sys
 
 def runAlgo(algo, params, stream, **kvargs): 
     ds = algo(s=params["s"], c=params["c"], mode=params["mode"])      
@@ -25,14 +24,15 @@ def runAlgoNreps(algo, params, stream, repsN, threads=1):
 def runManySettings(algo, params, streams, repsN, threads=1):
     spaces = params["s"];
     modes = params["mode"]
-    print("dataset|algo|mode|sketchsize|error|errorStd")
+    algoname = "kll" if "KLL" in str(algo) else "lwyc" 
+    print("dataset|algo|mode|sketchsize|error|errorStd") 
     for s_name, s_data in streams.iteritems():
         for space in spaces: 
             for mode in modes: 
                 params["s"] = space
                 params["mode"] = mode
                 result = runAlgoNreps(algo, params, s_data, repsN, threads=1)
-                print(s_name + "\t" + str(algo)[-4:]+" \t" + "".join(map(str,mode)) + "\t" + str(space) + "\t"+ 
+                print(s_name + "\t" + algoname +" \t" + "".join(map(str,mode)) + "\t" + str(space) + "\t"+ 
                       str("{:10.1f}".format(result[0]))+ "\t"+ str("{:10.1f}".format(result[1])))
     return 0
 
@@ -58,4 +58,20 @@ def exp1(streamLen, repsN, threadsN):
    
     
 if __name__ == "__main__":
-    exp1(4, 10, 2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', type=str, default="exp1", 
+                        help='experiment to run: "exp1", "exp2", ...')
+    parser.add_argument('-l', type=int, default=4, 
+                        help='length of the stream (set x to get 10^x)')
+    parser.add_argument('-r', type=int, default=10, 
+                        help='number of repetitions for each run')
+    parser.add_argument('-t', type=int, default=2, 
+                        help='number of threads to use')
+    args = parser.parse_args()
+    
+    if args.a  == 'exp1':
+        exp1(args.l, args.r , args.t)
+    elif args.a  == 'exp2':
+        print ("TBD")
+    elif args.a  == 'exp3':
+        print ("TBD")
