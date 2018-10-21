@@ -80,8 +80,9 @@ class LWYC:
         trueRanks = np.zeros(len(estRanks))
         for i in np.searchsorted(estRanks[:,0], data):
             trueRanks[i-1] += 1 
-        trueRanks = np.cumsum(trueRanks) 
-        maxError = max([abs(i-j) for i,j in zip(estRanks[:,1], trueRanks)])
+        trueRanks = np.cumsum(trueRanks)
+        estRanks = np.array(estRanks[:,1],dtype=np.int32)
+        maxError = max([abs(i-j) for i,j in zip(estRanks, trueRanks)])
         return maxError    
  
     # computes space needed for given eps

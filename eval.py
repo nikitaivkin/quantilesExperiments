@@ -38,19 +38,14 @@ def runManySettings(algo, params, streams, repsN, threads=1):
 
 
 def exp1(streamLen, repsN, threadsN):
-    # generating and loading random and sorted streams of length streamLen
-    streams = {} 
-    order = "random"; filename = str(streamLen)+order+".npy"; binary = "binary";
-    Data.gen2file(filename, 10**streamLen, order, binary)
-    streams[filename] = Data.load(filename) 
-    order = "sorted"; filename = str(streamLen)+order+".npy"; binary = "binary";
-    Data.gen2file(filename, 10**streamLen, order, binary)
-    streams[filename] = Data.load(filename) 
+    # loading all streams of length streamLen
+    streamNames = ["random", "sorted", "caida", "wiki", "wiki_s"]
+    streams = dict([(s, Data.load("streams/" + str(streamLen) + s + ".npy")) for s in streamNames])  
     
     # running experiments for KLL for all modes and spaces  
     algo = getattr(kll,"KLL") 
-    params = {"s":[128, 256, 512, 1024, 2048, 4096, 8192], 
-              "c":2./3.,
+    params = {"s": [128, 256, 512, 1024, 2048, 4096, 8192, 16384], 
+              "c": 2./3.,
               "mode": [(0,0,0,0),(1,0,0,0),(0,1,0,0),(1,1,0,0),
                        (0,0,1,0),(1,0,1,0),(0,1,1,0),(1,1,1,0),
                        (0,0,0,1),(1,0,0,1),(0,1,0,1),(1,1,0,1),
@@ -59,11 +54,11 @@ def exp1(streamLen, repsN, threadsN):
    
     # running experiments for LWYC for all modes and spaces  
     algo = getattr(lwyc,"LWYC") 
-    params = {"s":[128, 256, 512, 1024, 2048, 4096, 8192], 
+    params = {"s":[128, 256, 512, 1024, 2048, 4096, 8192, 16384], 
               "c": None,
               "mode": [(None,None,None)]} 
     runManySettings(algo, params, streams, repsN, threadsN)
 
 
 if __name__ == "__main__":
-    exp1(4, 50, 2)
+    exp1(4, 10, 2)
