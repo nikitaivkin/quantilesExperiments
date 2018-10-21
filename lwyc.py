@@ -15,12 +15,12 @@ class LWYC:
         self.al = 0                                 # active layer value (defines sampling rate)
         self.sampler = Sampler()                    
         self.count = 0                              # current length of the stream
-    
+
     def update(self,item):
         self.count += 1 
         item = self.sampler.sample(item, self.al)       # sample an item (returns None if not sampled)
         if item is None:
-            return 
+            return
         
         self.buckets[self.bucket_i].append(item)        # adding to the current bucket
         if len(self.buckets[self.bucket_i]) < self.s:   # if current bucket is not full
@@ -36,19 +36,18 @@ class LWYC:
                          
         self.buckets[idx] = Bucket(b1=self.buckets[idx],             # merge found pair (idx,idx+1) into the bucket idx  
                                    b2=self.buckets[idx + 1])        
-         
-           
-
+        del self.buckets[idx + 1][:]                                 # clean the bucket idx+1         
+        
         self.buckets[idx + 1:-1] = self.buckets[idx + 2:]            # shift all the buckets so the last one is empty now
         self.bucketsLayers[idx + 1:-1] = self.bucketsLayers[idx + 2:]            
-        del self.buckets[-1][:]                                      # last bucket is non-full now
+        
+        self.buckets[-1] = Bucket()                                  # last bucket is non-full now
         self.bucket_i -= 1                                           # return index to non-full bucket 
         self.bucketsLayers[idx] += 1                                 # merged one -> layer up
-       
 
         self.al = min(max(0, ceil(log(float(self.count)/(self.s*2**(self.b - 2)),2))), self.bucketsLayers[-2]) # update active layer if needed
         self.bucketsLayers[-1] = self.al 
-    
+
     # returns rank of value in the weighted set of all stored items
     def rank(self, value):
         r = 0
@@ -60,14 +59,11 @@ class LWYC:
 
     # returns ranks in the weigjted set of all stored items for all unique stored items 
     def ranks(self):
-        ranksList = []
-        itemsAndWeights = []
-        
+        ranksList = []; itemsAndWeights = []
         for (i, items) in enumerate(self.buckets):
             itemsAndWeights.extend((item, 2 **  (self.bucketsLayers[i])) for item in items)
         itemsAndWeights.sort()
-        cumWeight = 0
-        prev_item = None
+        cumWeight = 0; prev_item = None
         for (item, weight) in itemsAndWeights:
             cumWeight += weight
             if item!= prev_item:
@@ -129,7 +125,7 @@ class Sampler():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', type=int, default=256, 
-                              help=''' controls the space usage of the data structure''')
+                              help='controls the space usage of the data structure')
     parser.add_argument('-t', type=str, choices=["string","int","float"], default='string',
                               help='defines the type of stream items, default="string".' )
     args = parser.parse_args()

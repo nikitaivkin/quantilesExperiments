@@ -41,24 +41,21 @@ def exp1(streamLen, repsN, threadsN):
     # loading all streams of length streamLen
     streamNames = ["random", "sorted", "caida", "wiki", "wiki_s"]
     streams = dict([(s, Data.load("streams/" + str(streamLen) + s + ".npy")) for s in streamNames])  
-    
-    # running experiments for KLL for all modes and spaces  
-    algo = getattr(kll,"KLL") 
-    params = {"s": [128, 256, 512, 1024, 2048, 4096, 8192, 16384], 
-              "c": 2./3.,
-              "mode": [(0,0,0,0),(1,0,0,0),(0,1,0,0),(1,1,0,0),
-                       (0,0,1,0),(1,0,1,0),(0,1,1,0),(1,1,1,0),
-                       (0,0,0,1),(1,0,0,1),(0,1,0,1),(1,1,0,1),
-                       (0,0,1,1),(1,0,1,1),(0,1,1,1),(1,1,1,1)]} 
-    runManySettings(algo, params, streams, repsN, threadsN)
    
     # running experiments for LWYC for all modes and spaces  
     algo = getattr(lwyc,"LWYC") 
     params = {"s":[128, 256, 512, 1024, 2048, 4096, 8192, 16384], 
-              "c": None,
-              "mode": [(None,None,None)]} 
+              "c": None,"mode": [(None,None,None)]} 
     runManySettings(algo, params, streams, repsN, threadsN)
-
-
+    
+    # running experiments for KLL for all modes and spaces  
+    algo = getattr(kll,"KLL") 
+    params = {"s": [128, 256, 512, 1024, 2048, 4096, 8192, 16384], "c": 2./3.,
+              "mode": [(0,0,0,0),(1,0,0,0),(0,1,0,0),(1,1,0,0), (0,0,1,0),(1,0,1,0),
+                       (0,1,1,0),(1,1,1,0),(0,0,0,1),(1,0,0,1),(0,1,0,1),(1,1,0,1),
+                       (0,0,1,1),(1,0,1,1),(0,1,1,1),(1,1,1,1)]} 
+    runManySettings(algo, params, streams, repsN, threadsN)
+   
+    
 if __name__ == "__main__":
     exp1(4, 10, 2)
