@@ -31,7 +31,7 @@ def runManySettings(algo, params, streams, repsN, threads=1):
             for mode in modes: 
                 params["s"] = space
                 params["mode"] = mode
-                result = runAlgoNreps(algo, params, s_data, repsN, threads=1)
+                result = runAlgoNreps(algo, params, s_data, repsN, threads)
                 print(s_name + "\t" + algoname +" \t" + "".join(map(str,mode)) + "\t" + str(space) + "\t"+ 
                       str("{:10.1f}".format(result[0]))+ "\t"+ str("{:10.1f}".format(result[1])))
     return 0
