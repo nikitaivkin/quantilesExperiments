@@ -70,18 +70,7 @@ class LWYC:
                 ranksList.append((item, cumWeight))
             prev_item = item
         return ranksList
-  
-    def evalMaxError(self, data):
-        estRanks = np.array(self.ranks())
-        trueRanks = np.zeros(len(estRanks))
-        for i in np.searchsorted(estRanks[:,0], data, side='right'):
-            if i < len(trueRanks):
-                trueRanks[i] += 1 
-        trueRanks = np.cumsum(trueRanks)
-        estRanks = np.array(estRanks[:,1],dtype=np.int32)
-        maxError = max([abs(i-j) for i,j in zip(estRanks, trueRanks)])
-        return maxError    
- 
+
     # computes space needed for given eps
     def eps2space(self,eps):
         return sqrt(log(1.0 / eps, 2)) * (log(1.0 / eps, 2) + 1) / eps

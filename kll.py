@@ -87,18 +87,7 @@ class KLL(object):
             prev_item = item
         return ranksList
     
-    def evalMaxError(self, data):
-        estRanks = np.array(self.ranks())
-        trueRanks = np.zeros(len(estRanks))
-        for i in np.searchsorted(estRanks[:,0], data, side="right"):
-            if i < len(trueRanks): 
-                trueRanks[i] += 1 
-        trueRanks = np.cumsum(trueRanks)
-        estRanks = np.array(estRanks[:,1],dtype=np.int32)
-        maxError = max([abs(i-j) for i,j in zip(estRanks, trueRanks)])
-        return maxError    
- 
-
+  
 
 class Compactor(list):
     def __init__(self, mode):
