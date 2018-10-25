@@ -7,11 +7,16 @@ class Data:
         return np.load(path) if binary else np.array(open(path).read().splitlines())
 
     @staticmethod
-    def syn2csv(streamType="random", streamLen=4): 
-        assert(streamType in ['sorted', 'random'])
+    def syn2csv(streamType="random", streamLen=4, **kwargs): 
+        assert(streamType in ['sorted', 'random', 'trending', 'brownian' ])
         stream = np.arange(10**streamLen) 
         if streamType == 'random':  
             np.random.shuffle(stream)
+        elif streamType == 'trending':
+            stream = stream + np.random.randint(-10**streamLen *kwargs["trendingP"],10**streamLen*kwargs["trendingP"], 10**streamLen)
+        elif streamType == 'brownian':
+            stream = np.random.randint(-10**streamLen *kwargs["trendingP"],10**streamLen*kwargs["trendingP"], 10**streamLen)
+            stream = np.cumsum(stream) 
         np.savetxt(str(streamLen) + streamType + ".csv",stream, fmt="%u")
 
     @staticmethod
@@ -38,8 +43,10 @@ if __name__ == '__main__':
                         'convert' to save csv as binary and 'read' to print stream from file ''')
     parser.add_argument('-l', type=int, default=4, 
                         help='''length of the stream (set x to get 10^x)''')
-    parser.add_argument('-o', type=str, default="random", 
-                        help='''stream type: random/sorted''')
+    parser.add_argument('-s', type=str, default="random", 
+                        help='''stream type: random/sorted/trending/brownian''')
+    parser.add_argument('-p', type=float, default=0.01, 
+                        help='''stream generating parameter''')
     parser.add_argument('-t', type=str, default="str", 
                         help='''item type: 'str' or 'int' ''')
     parser.add_argument('-f', type=str, 
@@ -47,7 +54,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     if args.a  == 'generate':
-        Data.syn2csv(args.o, args.l)
+        Data.syn2csv(streamType=args.s, streamLen=args.l, trendingP=args.p)
     elif args.a  == 'convert' and args.f:
         Data.csv2npy(args.f, t=args.t)
     elif args.a  == 'read' and args.f:
