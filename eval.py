@@ -55,8 +55,8 @@ def runManySettings(algo, params, streams, repsN, threads=1):
 
 def exp1(streamLen, streamsPath, repsN, threadsN):
     # loading all streams of length streamLen
-    streams = ["random", "sorted", "caida", "wiki", "wiki_s"]
-    types = ["int", "int", "caida", "wiki", "wiki_s"]
+    streams = ["random", "sorted", "brownian", "trending", "caida", "wiki", "wiki_s"]
+    types = ["int", "int", "int", "int", "str", "str", "str"]
     streams = [streamsPath + str(streamLen)+ i + ".csv" for i in streams]
     streams = zip(streams, types) 
     
