@@ -27,7 +27,7 @@ class KLL(object):
    
     def grow(self):
         self.compactors.append(Compactor(self.mode)) 
-        if self.H + 1 > self.maxH:      # if new compactor is too hight -> drop the bottom layer
+        if self.H + 1 > self.maxH:      # if new compactor is too high -> drop the bottom layer
             self.D += 1                  
             self.compactors.pop(0)
         else:

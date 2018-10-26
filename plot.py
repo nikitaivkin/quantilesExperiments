@@ -1,52 +1,54 @@
-import pandas as pd 
+#import pandas as pd 
 import numpy as np
+import os 
 import matplotlib.pyplot as plt
 
+def plotExp1(resFilePath):
+    res= {} 
+    for line in open(resFilePath).read().splitlines()[1:]:  # skipping first line/header
+        [stream, algo, mode, space, meanError, stdError] = line.split()
+        stream = os.path.basename(stream) 
+        stream = stream[1:stream.find(".")] 
+        if stream not in res:
+            res[stream] = {}
+        if mode == "NoneNoneNone":
+            mode = ""
+        if algo + mode not in res[stream]:
+            res[stream][algo+mode] = []
+        res[stream][algo+mode].append([int(space), float(meanError), float(stdError)])
+    
+    for stream in res.keys():
+        fig, ax = plt.subplots()
+        lines = [] 
+        algos = ['lwyc', 'kll0000', 'kll1000', 'kll1100', 'kll1010', 'kll1001','kll1101']
+        for algo in algos:
+            data = np.array(res[stream][algo])
+            line, = ax.plot(range(len(data[:,0])),data[:,1]/10**6, linewidth=2, label= algo)
+            lines.append(line)
+        
+        ax.legend(loc='upper right', fontsize=14)
+        plt.yticks(fontsize=16)
+        plt.xticks(range(8),[128,256,512,1024,2048,4096,8192,16384],fontsize=16)
+        ax.set_title(stream) 
+        #ax.set_ylim(0, 0.1)
+        ax.set_xlim(0, 7)
+        ax.set_xlabel("Sketch size", fontsize=18)
+        ax.set_ylabel('Error', fontsize=18)
+        ax.grid(linestyle='-', linewidth=0.5)
+        plt.tight_layout()
+        #plt.savefig('tricks1.png')
+        plt.show()
 
-def plot(space, dataset): 
-    df = pd.read_csv('results/results.csv', names=['dataset', 'algo', 'space', 'mode', 'c', 'repetition','error', 'estVar'], dtype = {'mode':np.str})
-    df['dsType'] = pd.Series(df['dataset'], index=df.index)
-    rep = {"./datasets/r6.npy": "random","./datasets/zi6.npy": "zoomin","./datasets/zo6.npy": "zoomout","./datasets/s6.npy": "sorted" }
-    df['dsType'] = df['dsType'].replace(rep)
-    del df["dataset"]
-    del df["c"]
-    del df["repetition"]
-    del df["estVar"]
-    df = df.loc[df['dsType'] == 'random'] 
-    df = df.loc[df['space'] == 512] 
-    df = df.loc[df['algo'] ==df['algo'][0]] 
-    del df['dsType']
-    del df['space']
-    del df['algo']
-    #print(df['mode'].drop_duplicates())
-    #print(df['dataset'].drop_duplicates())
-    #print(df)
-    #grouped = df.groupby(['dataset', 'algo','space','mode','c'])
-    #for name, group in grouped:
-    #    print(name)
-    #    print(group)
-    df_mean = df.groupby(['mode']).mean()
-    df_std = df.groupby(['mode']).std()
-    #print (df_mean)
-    #print (df_std)
-    df_mean['std'] = df_std['error']
-    df_mean = df_mean.reset_index(level=0)
-    print (df_mean)
-    error_mean =  np.array(df_mean['error'])
-    error_std = np.array(df_mean['std'])
-    mode = np.array(df_mean['mode'])
-    print(error_mean)
-    print(error_std)
-    print(mode)
-    plt.errorbar(xrange(len(error_mean)), error_mean/1000000, error_std/1000000, linestyle='None', marker='^')
-    plt.xticks(xrange(len(error_mean)), mode,  rotation='vertical')
-    plt.xlim(-1,14)
-    plt.xlabel("algorithm mode, 0 - off, 1 - on (greedy memory, lazy compactions, sampling, one coin flip, shifting trick, one pair compaction (random - 1, non random -2)) ", fontsize=16)
-    plt.ylabel("Mean relative error +/- standard deviation",fontsize=24)
-    plt.show()
-    #print (df_mean.filter(like='random', axis=0))
-    #print(df_mean.loc[df_mean['dsType'] == 'random'])
+#
+#    plt.errorbar(xrange(len(error_mean)), error_mean/1000000, error_std/1000000, linestyle='None', marker='^')
+#    plt.xticks(xrange(len(error_mean)), mode,  rotation='vertical')
+#    plt.xlim(-1,14)
+#    plt.xlabel("algorithm mode, 0 - off, 1 - on (greedy memory, lazy compactions, sampling, one coin flip, shifting trick, one pair compaction (random - 1, non random -2)) ", fontsize=16)
+#    plt.ylabel("Mean relative error +/- standard deviation",fontsize=24)
+#    plt.show()
+#    #print (df_mean.filter(like='random', axis=0))
+#    #print(df_mean.loc[df_mean['dsType'] == 'random'])
 
 if __name__ == "__main__":
-    plot(512, 'random')
+    plotExp1('6exp1.out')
 

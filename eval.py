@@ -42,7 +42,6 @@ def runManySettings(algo, params, streams, repsN, threads=1):
     spaces = params["s"];
     modes = params["mode"]
     algoname = "kll" if "KLL" in str(algo) else "lwyc" 
-    print("dataset|algo|mode|sketchsize|error|errorStd") 
     for [streamFilePath, itemType] in streams:
         for space in spaces: 
             for mode in modes: 
@@ -59,6 +58,9 @@ def exp1(streamLen, streamsPath, repsN, threadsN):
     types = ["int", "int", "int", "int", "str", "str", "str"]
     streams = [streamsPath + str(streamLen)+ i + ".csv" for i in streams]
     streams = zip(streams, types) 
+   
+    # header for the output
+    print("dataset|algo|mode|sketchsize|error|errorStd") 
     
     # running experiments for LWYC for all modes and spaces  
     algo = getattr(lwyc,"LWYC") 
