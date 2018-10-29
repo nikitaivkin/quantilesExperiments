@@ -97,7 +97,7 @@ class KLL(object):
         for k in range(self.blCap+1,self.maxS): 
             layers = [k] 
             while layers[-1] >= self.blCap and sum(layers) < self.maxS:
-                layers.append(ceil(layers[-1]*c)) 
+                layers.append(ceil(layers[-1]*self.c)) 
             layers = layers[:-1]
             s = sum(layers) 
             if self.maxS - s < minSpaceLoss and len(layers) >= self.maxH:
