@@ -76,8 +76,24 @@ def exp1(streamLen, streamsPath, repsN, threadsN):
                        (0,0,1,1),(1,0,1,1),(0,1,1,1),(1,1,1,1)]} 
     runManySettings(algo, params, streams, repsN, threadsN)
    
-
+def exp2(streamLen, streamsPath, repsN, threadsN):
+    # loading all streams of length streamLen
+    streams = ["random", "sorted"]
+    types = ["int", "int"]
+    streams = [streamsPath + str(streamLen)+ i + ".csv" for i in streams]
+    streams = zip(streams, types) 
    
+    # header for the output
+    print("dataset|mode|c|maxError|errorStd|meanError") 
+   
+    # running experiments for KLL for all modes and spaces  
+    algo = getattr(kll,"KLL") 
+    for c in np.arange(10,90)/100: 
+        params = {"s": [1024], "c": c,
+                  "mode": [(0,0,0,0),(1,0,0,0)]} 
+        runManySettings(algo, params, streams, repsN, threadsN)
+  
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', type=str, default="exp1", 

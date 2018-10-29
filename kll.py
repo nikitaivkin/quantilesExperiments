@@ -12,19 +12,20 @@ class KLL(object):
                                          # parsing mode options
         self.maxS = s                    # max number of items stored (space limit) 
         self.S = 0                       # current number of items stored 
-        
         self.c = c                       # layer size decreasing rate
-        self.k = int(self.maxS*(1-c) + 4)# k is a top layer size, 
-       
+        self.blCap = 4                   # Bottom Layer Capacity (the smallest one)  
+        self.k = self.blCap      
+        
+        self.setLayersCaps()             # choses k based on self.maxS, self.blCap and self.c
+                                         # sets self.maxH and capacities for all layers self.layersCaps
         self.H = 0                       # current number of layers (height)
-        self.maxH = log(self.k/4, 1./c)  # max number of layers (max height)
         self.D = 0                       # depth (defines the sampling rate)
         self.count = 0                   # current number of updates processed  
         
         self.sampler = Sampler()         
         self.compactors = []            
         self.grow()                      # initialization -- create first empty compactor
-   
+
     def grow(self):
         self.compactors.append(Compactor(self.mode)) 
         if self.H + 1 > self.maxH:      # if new compactor is too high -> drop the bottom layer
@@ -35,7 +36,8 @@ class KLL(object):
     
     # returns max capacity of the compactor at height h
     def capacity(self, h):
-        return floor(self.k * (self.c ** (self.H - h - 1)))
+        return self.layersCaps[-self.H + h] 
+#        return floor(self.k * (self.c ** (self.H - h - 1)))
   
     def update(self, item):
         self.count += 1
@@ -86,8 +88,25 @@ class KLL(object):
                 ranksList.append((item, cumWeight))
             prev_item = item
         return ranksList
-    
-  
+
+    # finds the best choice of k for given space limit, base layer capacity and parameter C
+    def setLayersCaps(self):
+        minSpaceLoss = self.maxS 
+        self.maxH = 0  
+        self.layersCaps = [] 
+        for k in range(self.blCap+1,self.maxS): 
+            layers = [k] 
+            while layers[-1] >= self.blCap and sum(layers) < self.maxS:
+                layers.append(ceil(layers[-1]*c)) 
+            layers = layers[:-1]
+            s = sum(layers) 
+            if self.maxS - s < minSpaceLoss and len(layers) >= self.maxH:
+                self.layersCaps = layers
+                minSpaceLoss = self.maxS - s  
+                self.maxH = len(layers) 
+        self.layersCaps[0] += minSpaceLoss
+        self.layersCaps = self.layersCaps[::-1]
+   
 
 class Compactor(list):
     def __init__(self, mode):
@@ -140,7 +159,6 @@ class Sampler():
         self.s2 -= 1
         return item if (self.s1 == -1) else None
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', type=int, default=256, 
@@ -162,4 +180,5 @@ if __name__ == '__main__':
 
     for (item, rank) in kll.ranks():
         print('%f\t%s'%(float(rank)/kll.count,str(item)))
+
 

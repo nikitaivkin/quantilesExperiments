@@ -20,7 +20,7 @@ def plotExp1(resFilePath):
     for stream in res.keys():
         fig, ax = plt.subplots()
         lines = [] 
-        algos = ['lwyc', 'kll0000', 'kll1000', 'kll1100', 'kll1010', 'kll1001','kll1101']
+        algos = ['lwyc', 'kll0000', 'kll1000', 'kll0100', 'kll0010', 'kll0001']
         for algo in algos:
             data = np.array(res[stream][algo])
             line, = ax.plot(range(len(data[:,0])),data[:,1]/10**6, linewidth=2, label= algo)
