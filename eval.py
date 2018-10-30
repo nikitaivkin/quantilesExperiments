@@ -38,7 +38,7 @@ def runAlgoNreps(algo, params, streamFilePath, itemType, repsN, threads=1):
         pool.close(); pool.join()
     return [np.mean(errors), np.std(errors)] 
 
-def runManySettings(algo, params, streams, repsN, threads=1):
+def runManySettings(algo, params, streams, repsN, threads=1, printC=0):
     spaces = params["s"];
     modes = params["mode"]
     algoname = "kll" if "KLL" in str(algo) else "lwyc" 
@@ -49,10 +49,11 @@ def runManySettings(algo, params, streams, repsN, threads=1):
                 params["mode"] = mode
                 result = runAlgoNreps(algo, params, streamFilePath, itemType, repsN, threads)
                 print(streamFilePath + "\t" + algoname +" \t" + "".join(map(str,mode)) + "\t" + str(space) + "\t"+ 
-                      str("{:10.1f}".format(result[0]))+ "\t"+ str("{:10.1f}".format(result[1])))
+                       (str(params['c']) + "\t")*printC + 
+                       str("{:10.1f}".format(result[0]))+ "\t"+ str("{:10.1f}".format(result[1])))
     return 0
 
-def exp1(streamLen, streamsPath, stream, repsN, threadsN):
+def loadStreams(streamLen, streamsPath, stream):
     # loading all streams of length streamLen
     streams = ["random", "sorted", "brownian", "trending", "caida", "wiki", "wiki_s"]
     types = ["int", "int", "int", "int", "str", "str", "str"]
@@ -60,8 +61,11 @@ def exp1(streamLen, streamsPath, stream, repsN, threadsN):
         types = [types[streams.index(stream)]]
         streams = [stream]
     streams = [streamsPath + str(streamLen)+ i + ".csv" for i in streams]
-    streams = zip(streams, types) 
-   
+    return zip(streams, types) 
+
+def exp1(streamLen, streamsPath, stream, repsN, threadsN):
+    streams = loadStreams(streamLen, streamsPath, stream) 
+    
     # header for the output
     print("dataset|algo|mode|sketchsize|error|errorStd") 
     
@@ -79,23 +83,26 @@ def exp1(streamLen, streamsPath, stream, repsN, threadsN):
                        (0,0,1,1),(1,0,1,1),(0,1,1,1),(1,1,1,1)]} 
     runManySettings(algo, params, streams, repsN, threadsN)
    
-def exp2(streamLen, streamsPath, repsN, threadsN):
-    # loading all streams of length streamLen
-    streams = ["random", "sorted"]
-    types = ["int", "int"]
-    streams = [streamsPath + str(streamLen)+ i + ".csv" for i in streams]
-    streams = zip(streams, types) 
-   
+def exp2(streamLen, streamsPath, stream, repsN, threadsN):
+    streams = loadStreams(streamLen, streamsPath, stream) 
+    
     # header for the output
-    print("dataset|mode|c|maxError|errorStd|meanError") 
+    print("dataset|algo|mode|sketchsize|c|error|errorStd") 
    
     # running experiments for KLL for all modes and spaces  
     algo = getattr(kll,"KLL") 
-    for c in np.arange(10,90)/100: 
-        params = {"s": [1024], "c": c,
-                  "mode": [(0,0,0,0),(1,0,0,0)]} 
-        runManySettings(algo, params, streams, repsN, threadsN)
+    crange = np.arange(10,95,5)/100.
+    for c in crange: 
+        params = {"s": [512], "c": c,
+                  "mode": [(0,0,0,0)]} 
+        runManySettings(algo, params, streams, repsN, threadsN, printC=1)
+    
+    for c in crange: 
+        params = {"s": [512], "c": c,
+                  "mode": [(1,0,0,0)]} 
+        runManySettings(algo, params, streams, repsN, threadsN, printC=1)
   
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -116,7 +123,7 @@ if __name__ == "__main__":
     if args.a  == 'exp1':
             exp1(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp2':
-        print ("TBD")
+            exp2(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp3':
         print ("TBD")
 
