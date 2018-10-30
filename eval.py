@@ -102,7 +102,25 @@ def exp2(streamLen, streamsPath, stream, repsN, threadsN):
                   "mode": [(1,0,0,0)]} 
         runManySettings(algo, params, streams, repsN, threadsN, printC=1)
   
-
+def exp3(streamLens=[4,8],streamsPath="streams/", stream='random', repsN=1, threadsN=1):
+    streams = [] 
+    for streamLen in range(streamLens[0],streamLens[1]+1):
+        streams.extend(loadStreams(streamLen, streamsPath, stream)) 
+    # header for the output
+    print("dataset|algo|mode|sketchsize|error|errorStd") 
+    
+    # running experiments for LWYC for all modes and spaces  
+    algo = getattr(lwyc,"LWYC") 
+    params = {"s":[256,512,1024], 
+              "c": None,"mode": [(None,None,None)]} 
+    runManySettings(algo, params, streams, repsN, threadsN)
+    
+    # running experiments for KLL for all modes and spaces  
+    algo = getattr(kll,"KLL") 
+    params = {"s": [256, 512, 1024], "c": 2./3.,
+              "mode": [(0,0,0,0),(1,1,0,1),(1,1,1,1)]}
+    runManySettings(algo, params, streams, repsN, threadsN)
+ 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -121,9 +139,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.a  == 'exp1':
-            exp1(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
+        exp1(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp2':
-            exp2(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
+        exp2(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp3':
-        print ("TBD")
+        exp3(streamLens=[args.l,args.l+1], streamsPath=args.p, repsN=args.r , threadsN=args.t)
 
