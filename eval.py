@@ -52,10 +52,13 @@ def runManySettings(algo, params, streams, repsN, threads=1):
                       str("{:10.1f}".format(result[0]))+ "\t"+ str("{:10.1f}".format(result[1])))
     return 0
 
-def exp1(streamLen, streamsPath, repsN, threadsN):
+def exp1(streamLen, streamsPath, stream, repsN, threadsN):
     # loading all streams of length streamLen
     streams = ["random", "sorted", "brownian", "trending", "caida", "wiki", "wiki_s"]
     types = ["int", "int", "int", "int", "str", "str", "str"]
+    if stream!= 'NA':
+        types = [types[streams.index(stream)]]
+        streams = [stream]
     streams = [streamsPath + str(streamLen)+ i + ".csv" for i in streams]
     streams = zip(streams, types) 
    
@@ -106,10 +109,12 @@ if __name__ == "__main__":
                         help='number of threads to use')
     parser.add_argument('-p', type=str, default="streams/", 
                         help='path to all streams')
+    parser.add_argument('-s', type=str, default="NA", 
+                        help='dataset')
     args = parser.parse_args()
     
     if args.a  == 'exp1':
-        exp1(args.l, args.p, args.r , args.t)
+            exp1(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp2':
         print ("TBD")
     elif args.a  == 'exp3':
