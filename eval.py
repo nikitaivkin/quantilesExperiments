@@ -121,6 +121,29 @@ def exp3(streamLens=[4,8],streamsPath="streams/", stream='random', repsN=1, thre
               "mode": [(0,0,0,0),(1,1,0,1),(1,1,1,1)]}
     runManySettings(algo, params, streams, repsN, threadsN)
  
+def exp4(streamLen, streamsPath, repsN, threadsN):
+    streams = [] 
+    # loading all streams of length streamLen
+    ps = [0.01,0.05,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0]
+    types = ["int"] * len(streams)
+    streams = [streamsPath + str(streamLen)+ "trending" + str(i) +  ".csv" for i in ps]
+    streams = zip(streams, types) 
+    # header for the output
+    print("dataset|algo|mode|sketchsize|error|errorStd") 
+    
+    # running experiments for LWYC for all modes and spaces  
+    algo = getattr(lwyc,"LWYC") 
+    params = {"s":[256], 
+              "c": None,"mode": [(None,None,None)]} 
+    runManySettings(algo, params, streams, repsN, threadsN)
+    
+    print("dataset|algo|mode|sketchsize|error|errorStd") 
+    # running experiments for KLL for all modes and spaces  
+    algo = getattr(kll,"KLL") 
+    params = {"s": [ 256], "c": 2./3.,
+              "mode": [(0,0,0,0),(1,0,0,0),(1,1,0,1),(1,1,1,1)]} 
+    runManySettings(algo, params, streams, repsN, threadsN)
+ 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -138,10 +161,12 @@ if __name__ == "__main__":
                         help='dataset')
     args = parser.parse_args()
     
-    if args.a  == 'exp1':
+    if  args.a  == 'exp1':
         exp1(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp2':
         exp2(streamLen=args.l, streamsPath=args.p, stream=args.s, repsN=args.r , threadsN=args.t)
     elif args.a  == 'exp3':
         exp3(streamLens=[args.l,args.l+1], streamsPath=args.p, repsN=args.r , threadsN=args.t)
+    elif args.a  == 'exp4':
+        exp4(streamLen=args.l, streamsPath=args.p, repsN=args.r , threadsN=args.t)
 
